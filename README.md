@@ -1,8 +1,8 @@
-# Robin Hood
+# Robin Hud
 
-Robin Hud je 2d igra iz top-down perspektive. Cilj igre je da, u ulozi Robina Huda, opljačkate zamak i pobegnete pre nego što Vas stražari primete i uhvate. Strazari patroliraju zamkom u potrazi za uljezom. Ako se igrac nadje u vidnom polju strazara, on ce poceti da ga juri. Ukoliko strazar uspe da ga uhvati, igra je gotova.
+Robin Hud je 2d igra iz top-down perspektive. Cilj igre je da, u ulozi Robina Huda, opljačkate zamak i pobegnete pre nego što Vas stražari primete i uhvate. Stražari patroliraju zamkom u potrazi za uljezom. Ako se igrač nađe u vidnom polju stražara, on će početi da ga juri. Ukoliko stražar uspe da ga uhvati, igra je gotova.
 
-## Tehnologije/biblioteke
+## Jezik/tehnologije/biblioteke
 
 * Rust (https://rust-lang.org)
 * ggez (https://github.com/ggez/ggez) - biblioteka za 2d igre za rust (događaji, grafika, itd.)
@@ -28,5 +28,5 @@ Ova komanda prevodi program i smešta ga u direktorijum `target/release/`.
 ```
 
 ## Autori
-* Marijana Urošević, 186/2016
-* Luka Hadži-Đokić, 269/2016
+* Marijana Urošević, 186/2016, mv16186@alas.matf.bg.ac.rs
+* Luka Hadži-Đokić, 269/2016, mr16269@alas.matf.bg.ac.rs
