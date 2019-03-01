@@ -1,6 +1,6 @@
 # Robin Hood
 
-Robin Hud je 2d igra iz top-down perspektive. Cilj igre je da, u ulozi Robina Huda, opljačkate zamak i pobegnete pre nego što Vas stražari primete i uhvate.
+Robin Hud je 2d igra iz top-down perspektive. Cilj igre je da, u ulozi Robina Huda, opljačkate zamak i pobegnete pre nego što Vas stražari primete i uhvate. Strazari patroliraju zamkom u potrazi za uljezom. Ako se igrac nadje u vidnom polju strazara, on ce poceti da ga juri. Ukoliko strazar uspe da ga uhvati, igra je gotova.
 
 ## Tehnologije/biblioteke
 
