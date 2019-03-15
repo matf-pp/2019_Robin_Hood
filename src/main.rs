@@ -1,3 +1,145 @@
-fn main() {
-    println!("Hello, world!");
+extern crate ggez;
+extern crate rand;
+
+use ggez::*;
+
+use std::time::{Duration, Instant};
+
+const SCREEN_SIZE: (f32, f32) = (
+    640.0, 480.0
+);
+
+const UPDATES_PER_SECOND: f32 = 24.0;
+const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
+
+#[derive(Debug)]
+struct Animation {
+    spritesheet: graphics::Image,
+    width: f32,
+    height: f32,
+    frames_hor: i32,
+    frames_ver: i32,
+    curr_frame: i32,
+    fps: f32,
 }
+
+#[derive(Debug)]
+struct Player {
+    pos: mint::Point2<f32>,
+    ver: f32,
+    hor: f32,
+    walking: bool,
+    img: graphics::Image,
+    spd: f32,
+}
+
+impl Player {
+    pub fn new(ctx: &mut Context) -> Self {
+        Player {
+            pos: mint::Point2 {x: 0.0, y: 0.0},
+            ver: 0.0,
+            hor: 0.0,
+            walking: false,
+            img: graphics::Image::new(ctx, "/spritesheet.png").unwrap(),
+            spd: 9.0,
+        }
+    }
+
+    fn pos_from_move(&self) -> mint::Point2<f32> {
+        let mov = nalgebra::Vector2::new(self.hor, self.ver);
+        let mov_norm = mov.normalize() * self.spd;
+        mint::Point2 { x: self.pos.x + mov_norm.x, y: self.pos.y+mov_norm.y }
+    }
+
+    fn update(&mut self) {
+        if self.ver == 0.0 && self.hor == 0.0 {
+            self.walking = false;
+        } else {
+            self.walking = true;
+        }
+        if self.walking {
+            self.pos = self.pos_from_move();
+        }
+    }
+
+    fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+        graphics::draw(ctx,&self.img, graphics::DrawParam::new()
+                       .src(graphics::Rect::new(0.0, 0.0, 0.1, 0.1))
+                       .scale(mint::Vector2 { x: 1.0, y: 1.0 })
+                       .dest(self.pos))?;
+        Ok(())
+    }
+}
+
+struct GameState {
+    player: Player,
+    last_update: Instant,
+}
+
+impl GameState {
+    pub fn new(ctx: &mut Context) -> Self {
+        GameState {
+            player: Player::new(ctx),
+            last_update: Instant::now(),
+        }
+    }
+}
+
+impl event::EventHandler for GameState {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
+            self.player.update();
+            self.last_update = Instant::now();
+        }
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        graphics::clear(ctx, [0.2, 0.4, 0.2, 1.0].into());
+        self.player.draw(ctx)?;
+        graphics::present(ctx)?;
+        timer::yield_now();
+        Ok(())
+    }
+
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        keycode: event::KeyCode,
+        _keymod: event::KeyMods,
+        _repeat: bool,
+        ) {
+        match keycode {
+            event::KeyCode::Up => self.player.ver = -1.0,
+            event::KeyCode::Down => self.player.ver = 1.0,
+            event::KeyCode::Left => self.player.hor = -1.0,
+            event::KeyCode::Right => self.player.hor = 1.0,
+            _ => (),
+        }
+    } 
+    fn key_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        keycode: event::KeyCode,
+        _keymod: event::KeyMods,
+        ) {
+        match keycode {
+            event::KeyCode::Up if self.player.ver == -1.0 => self.player.ver = 0.0,
+            event::KeyCode::Down if self.player.ver == 1.0 => self.player.ver = 0.0,
+            event::KeyCode::Left if self.player.hor == -1.0 => self.player.hor = 0.0,
+            event::KeyCode::Right if self.player.hor == 1.0 => self.player.hor = 0.0,
+            _ => (),
+        }
+    }
+}
+
+fn main() -> GameResult {
+    let (ctx, events_loop) = &mut ContextBuilder::new("test", "lkh01")
+        .window_setup(conf::WindowSetup::default().title("Test!"))
+        .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
+        .build()?;
+
+    let state = &mut GameState::new(ctx);
+    event::run(ctx, events_loop, state)
+}
+
