@@ -1,0 +1,8 @@
+[package]
+name = "Robin_Hood"
+version = "0.1.0"
+authors = ["lkh01 <lcntrpn@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+ggez="0.5.0-rc0"
