@@ -1,5 +1,4 @@
 extern crate ggez;
-extern crate rand;
 
 use ggez::*;
 
@@ -40,7 +39,7 @@ impl Player {
             ver: 0.0,
             hor: 0.0,
             walking: false,
-            img: graphics::Image::new(ctx, "/spritesheet.png").unwrap(),
+            img: graphics::Image::new(ctx, "/images/robin_rundown.png").unwrap(),
             spd: 9.0,
         }
     }
@@ -64,8 +63,8 @@ impl Player {
 
     fn draw(&self, ctx: &mut Context) -> GameResult<()> {
         graphics::draw(ctx,&self.img, graphics::DrawParam::new()
-                       .src(graphics::Rect::new(0.0, 0.0, 0.1, 0.1))
-                       .scale(mint::Vector2 { x: 1.0, y: 1.0 })
+                       .src(graphics::Rect::new(0.0, 0.0, 1.0/7.0, 1.0))
+                       .scale(mint::Vector2 { x: 1.3, y: 1.3 })
                        .dest(self.pos))?;
         Ok(())
     }
@@ -95,7 +94,7 @@ impl event::EventHandler for GameState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.2, 0.4, 0.2, 1.0].into());
+        graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into());
         self.player.draw(ctx)?;
         graphics::present(ctx)?;
         timer::yield_now();
