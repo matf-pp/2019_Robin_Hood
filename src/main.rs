@@ -1,5 +1,7 @@
 extern crate ggez;
 
+mod map;
+
 use ggez::*;
 
 use std::time::{Duration, Instant};
