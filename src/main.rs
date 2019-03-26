@@ -30,7 +30,7 @@ struct Player {
     ver: f32,
     hor: f32,
     walking: bool,
-    img: graphics::Image,
+    img: graphics::Image, // TODO: zameniti graphics::Image sa mnogo efikasnijom varijantom graphics::spritebatch
     spd: f32,
 }
 
@@ -47,12 +47,22 @@ impl Player {
     }
 
     fn pos_from_move(&self) -> mint::Point2<f32> {
+        // ova f-ja se poziva pri svakom apdejtu
+        // na osnovu trenutne pozicije i pravca kretanja
+        // vraca "sledecu" poziciju igraca
         let mov = nalgebra::Vector2::new(self.hor, self.ver);
-        let mov_norm = mov.normalize() * self.spd;
-        mint::Point2 { x: self.pos.x + mov_norm.x, y: self.pos.y+mov_norm.y }
+        let mov_norm = mov.normalize();
+        mint::Point2 { x: self.pos.x + mov_norm.x * self.spd, y: self.pos.y + mov_norm.y * self.spd }
     }
 
     fn update(&mut self) {
+        /* self.walking je korisno za animaciju
+         * npr. if self.walking {
+         *          curr_animation = walk_animation;
+         *      } else {
+         *          curr_animation = idle_animation;
+         *      }
+         */
         if self.ver == 0.0 && self.hor == 0.0 {
             self.walking = false;
         } else {
@@ -88,6 +98,7 @@ impl GameState {
 
 impl event::EventHandler for GameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
             self.player.update();
             self.last_update = Instant::now();
@@ -135,8 +146,8 @@ impl event::EventHandler for GameState {
 }
 
 fn main() -> GameResult {
-    let (ctx, events_loop) = &mut ContextBuilder::new("test", "lkh01")
-        .window_setup(conf::WindowSetup::default().title("Test!"))
+    let (ctx, events_loop) = &mut ContextBuilder::new("robin_hood", "lkh01")
+        .window_setup(conf::WindowSetup::default().title("Robin Hood"))
         .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
         .build()?;
 
