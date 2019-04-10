@@ -10,7 +10,7 @@ const SCREEN_SIZE: (f32, f32) = (
     640.0, 480.0
 );
 
-const UPDATES_PER_SECOND: f32 = 24.0;
+const UPDATES_PER_SECOND: f32 = 30.0;
 const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ impl Player {
             hor: 0.0,
             walking: false,
             img: graphics::Image::new(ctx, "/images/robin_rundown.png").unwrap(),
-            spd: 9.0,
+            spd: 8.0,
         }
     }
 
@@ -74,7 +74,7 @@ impl Player {
     }
 
     fn draw(&self, ctx: &mut Context) -> GameResult<()> {
-        graphics::draw(ctx,&self.img, graphics::DrawParam::new()
+        graphics::draw(ctx, &self.img, graphics::DrawParam::new()
                        .src(graphics::Rect::new(0.0, 0.0, 1.0/7.0, 1.0))
                        .scale(mint::Vector2 { x: 1.3, y: 1.3 })
                        .dest(self.pos))?;
@@ -83,6 +83,7 @@ impl Player {
 }
 
 struct GameState {
+    castle_map: map::Map,
     player: Player,
     last_update: Instant,
 }
@@ -90,6 +91,7 @@ struct GameState {
 impl GameState {
     pub fn new(ctx: &mut Context) -> Self {
         GameState {
+            castle_map: map::Map::load(ctx, "/levels/level1.txt").unwrap(),
             player: Player::new(ctx),
             last_update: Instant::now(),
         }
@@ -108,6 +110,7 @@ impl event::EventHandler for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into());
+        self.castle_map.draw(ctx)?;
         self.player.draw(ctx)?;
         graphics::present(ctx)?;
         timer::yield_now();
