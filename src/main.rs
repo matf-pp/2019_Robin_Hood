@@ -37,7 +37,7 @@ struct Player {
 impl Player {
     pub fn new(ctx: &mut Context) -> Self {
         Player {
-            pos: mint::Point2 {x: 0.0, y: 0.0},
+            pos: mint::Point2 {x: 64.0, y: 64.0},
             ver: 0.0,
             hor: 0.0,
             walking: false,
@@ -76,7 +76,7 @@ impl Player {
     fn draw(&self, ctx: &mut Context) -> GameResult<()> {
         graphics::draw(ctx, &self.img, graphics::DrawParam::new()
                        .src(graphics::Rect::new(0.0, 0.0, 1.0/7.0, 1.0))
-                       .scale(mint::Vector2 { x: 1.3, y: 1.3 })
+                       //.scale(mint::Vector2 { x: 1.3, y: 1.3 })
                        .dest(self.pos))?;
         Ok(())
     }
@@ -91,7 +91,7 @@ struct GameState {
 impl GameState {
     pub fn new(ctx: &mut Context) -> Self {
         GameState {
-            castle_map: map::Map::load(ctx, "/levels/level1.txt").unwrap(),
+            castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }).unwrap(),
             player: Player::new(ctx),
             last_update: Instant::now(),
         }
