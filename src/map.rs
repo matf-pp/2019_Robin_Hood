@@ -6,8 +6,8 @@ use ggez::*;
 
 #[derive(Debug, Clone)]
 pub enum TileType {
-    Floor(graphics::DrawParam),
-    Wall(graphics::DrawParam),
+    Floor(graphics::Rect),
+    Wall(graphics::Rect),
 }
 
 #[derive(Debug, Clone)] // Clone nam treba da bi mogli da kopiramo vektore
@@ -19,10 +19,10 @@ pub struct Tile {
 }
 
 impl Tile {
-    pub fn new(ctx: &mut Context, ttype: TileType, tpos: mint::Point2<f32>, tsize: mint::Point2<f32>) -> Self {
+    pub fn new(ttype: TileType, tpos: mint::Point2<f32>, tsize: mint::Point2<f32>) -> Self {
         let tsrc = match ttype {
-            TileType::Floor(d) => d,
-            TileType::Wall(d)  => d,
+            TileType::Floor(d) => graphics::DrawParam::new().src(d),
+            TileType::Wall(d)  => graphics::DrawParam::new().src(d),
         }; // od tipa polja nece zavisiti samo slika, 
            // vec i stvari kao sto su kolizija, osvetljenje itd.  
         Tile {
@@ -34,10 +34,9 @@ impl Tile {
     }
 
     pub fn drawparam(&self, map_start: mint::Point2<f32>) -> graphics::DrawParam {
-        /* Mozda je bolje crtanje prepustiti samoj mapi, da bi mogli da pomeramo celu mapu
-         * ili eventualno napravimo i minimapu. U tom slucaju bi tile_pos bila pozicija u matrici
-         * mape, a ne na samom ekranu, a ova draw funkcija bi mogla da uzima tacku levog gornjeg
-         * ugla mape kao argument.
+        /* Kada crtamo mapu, crtamo jednu sliku sa razlicitim parametrima vise puta.
+         * Jedan bitan parametar je src (self.tile_src), gde odredjujemo koji deo slike ce se
+         * crtati, a drugi je pozicija slike, sto ovde racunamo.
          */
         self.tile_src.dest(mint::Point2 { x: map_start.x+self.tile_pos.x*self.tile_size.x,
                                           y: map_start.y+self.tile_pos.y*self.tile_size.y,
@@ -81,13 +80,11 @@ impl Map {
                 match c {
                     // treba pratiti x i y poziciju svakog polja, i na osnovu karaktera sa te
                     // pozicije dodati polje odgovarajuceg tipa u matricu mape
-                    '#' => curr_row_vec.push(Tile::new(ctx,
-                                                       TileType::Wall(graphics::DrawParam::new().src(graphics::Rect::new(tile_size.x/(spritesheet.width() as f32), 0.0, 0.5, 1.0))), 
+                    '#' => curr_row_vec.push(Tile::new(TileType::Wall([tile_size.x/(spritesheet.width() as f32), 0.0, 0.5, 1.0].into()), 
                                                        mint::Point2 { x:curr_x, y:curr_y }, 
                                                        tile_size)),
-                    ' ' => curr_row_vec.push(Tile::new(ctx,
-                                                       TileType::Floor(graphics::DrawParam::new().src(graphics::Rect::new(0.0, 0.0, 0.5, 1.0))), 
-                                                       mint::Point2 { x:curr_x, y:curr_y}, 
+                    ' ' => curr_row_vec.push(Tile::new(TileType::Floor([0.0, 0.0, 0.5, 1.0].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
                                                        tile_size)),
                     _   => (),
                 }
