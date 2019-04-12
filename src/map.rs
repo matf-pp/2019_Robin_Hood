@@ -150,6 +150,7 @@ impl Map {
                 self.map_spritebatch.add(tile.drawparam(self.map_start));
             }
         }
+        self.map_spritebatch.set_filter(graphics::FilterMode::Nearest);
         graphics::draw(ctx, &self.map_spritebatch, graphics::DrawParam::new())?;
         self.map_spritebatch.clear();
         Ok(())
