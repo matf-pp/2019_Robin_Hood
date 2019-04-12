@@ -58,6 +58,9 @@ impl Map {
         P: AsRef<Path>,
     {
         let spritesheet = graphics::Image::new(ctx, image_filename)?;
+        let swidth: f32 = spritesheet.width() as f32;
+        let sheigth: f32 = spritesheet.height() as f32;
+        let tfrac: mint::Point2<f32> = mint::Point2 { x: tile_size.x/swidth, y: tile_size.y/sheigth };
         let mut map_file = filesystem::open(ctx, level_filename)?;
         let mut map_string: String = "".to_string();
         map_file.read_to_string(&mut map_string)?;
@@ -80,10 +83,46 @@ impl Map {
                 match c {
                     // treba pratiti x i y poziciju svakog polja, i na osnovu karaktera sa te
                     // pozicije dodati polje odgovarajuceg tipa u matricu mape
-                    '#' => curr_row_vec.push(Tile::new(TileType::Wall([tile_size.x/(spritesheet.width() as f32), 0.0, 0.5, 1.0].into()), 
+                    '1' => curr_row_vec.push(Tile::new(TileType::Wall([0.0, 0.0, tfrac.x, tfrac.y].into()), 
                                                        mint::Point2 { x:curr_x, y:curr_y }, 
                                                        tile_size)),
-                    ' ' => curr_row_vec.push(Tile::new(TileType::Floor([0.0, 0.0, 0.5, 1.0].into()), 
+                    '2' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x, 0.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    '3' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*2.0, 0.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    '4' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*3.0, 0.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    '5' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*4.0, 0.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    '6' => curr_row_vec.push(Tile::new(TileType::Wall([0.0, tfrac.y*1.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    '7' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x, tfrac.y, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    '8' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*2.0, tfrac.y, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    '9' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*3.0, tfrac.y, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    'A' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*4.0, tfrac.y, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    'B' => curr_row_vec.push(Tile::new(TileType::Wall([0.0, tfrac.y*2.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    'C' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x, tfrac.y*2.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    'D' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*2.0, tfrac.y*2.0, tfrac.x, tfrac.y].into()), 
+                                                       mint::Point2 { x:curr_x, y:curr_y }, 
+                                                       tile_size)),
+                    ' ' => curr_row_vec.push(Tile::new(TileType::Floor([tfrac.x*3.0, tfrac.y*2.0, tfrac.x, tfrac.y].into()), 
                                                        mint::Point2 { x:curr_x, y:curr_y }, 
                                                        tile_size)),
                     _   => (),
