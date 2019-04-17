@@ -1,8 +1,10 @@
-extern crate ggez;
-
 use std::io::Read;
 use std::path::Path;
 use ggez::*;
+use na::{Vector2, Isometry2};
+use ncollide2d::shape::{Cuboid, ShapeHandle};
+use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
+
 
 #[derive(Debug, Clone)]
 pub enum TileType {
@@ -53,7 +55,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn load<P>(ctx: &mut Context, level_filename: P, image_filename: P, startpos: mint::Point2<f32>, tile_size: mint::Point2<f32>) -> GameResult<Self> 
+    pub fn load<P>(ctx: &mut Context, level_filename: P, image_filename: P, startpos: mint::Point2<f32>, tile_size: mint::Point2<f32>, world_mut: &mut CollisionWorld<f32, ()>) -> GameResult<Self> 
     where 
         P: AsRef<Path>,
     {
@@ -78,14 +80,21 @@ impl Map {
         let mut curr_x = 0.0;
         let mut curr_y = 0.0;
 
+        let shape = ShapeHandle::new(Cuboid::new(Vector2::new(16.0, 16.0)));
+        let query = GeometricQueryType::Contacts(0.0, 0.0);
+        let mut col_groups = CollisionGroups::new();
+        col_groups.set_membership(&[1 as usize]);
+        col_groups.set_blacklist(&[1 as usize]);
+        col_groups.set_whitelist(&[0 as usize]);
+
         while let Some(line) = map_lines.next() {
             for c in line.chars() {
                 match c {
                     // treba pratiti x i y poziciju svakog polja, i na osnovu karaktera sa te
                     // pozicije dodati polje odgovarajuceg tipa u matricu mape
                     '1' => curr_row_vec.push(Tile::new(TileType::Wall([0.0, 0.0, tfrac.x, tfrac.y].into()), 
-                                                       mint::Point2 { x:curr_x, y:curr_y }, 
-                                                       tile_size)),
+                                                         mint::Point2 { x:curr_x, y:curr_y }, 
+                                                         tile_size)),
                     '2' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x, 0.0, tfrac.x, tfrac.y].into()), 
                                                        mint::Point2 { x:curr_x, y:curr_y }, 
                                                        tile_size)),
@@ -126,6 +135,13 @@ impl Map {
                                                        mint::Point2 { x:curr_x, y:curr_y }, 
                                                        tile_size)),
                     _   => (),
+                }
+                match curr_row_vec[curr_x as usize].tile_type {
+                    TileType::Wall(_) => {
+                        world_mut.add(Isometry2::new(Vector2::new(startpos.x+curr_x*tile_size.x, startpos.y+curr_y*tile_size.y), 0.0), shape.clone(), col_groups, query, ());
+                        ()
+                    },
+                    _ => ()
                 }
                 curr_x += 1.0;
             }

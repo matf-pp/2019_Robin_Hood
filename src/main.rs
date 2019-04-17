@@ -1,10 +1,16 @@
 extern crate ggez;
+extern crate ncollide2d;
+extern crate nalgebra as na;
 
 mod map;
 
 use ggez::*;
+use na::{Vector2, Isometry2};
+use ncollide2d::shape::{Cuboid, ShapeHandle};
+use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
 
 use std::time::{Duration, Instant};
+
 
 const SCREEN_SIZE: (f32, f32) = (
     640.0, 480.0
@@ -32,10 +38,11 @@ struct Player {
     walking: bool,
     img: graphics::Image, // TODO: zameniti graphics::Image sa mnogo efikasnijom varijantom graphics::spritebatch
     spd: f32,
+    col_handle: CollisionObjectHandle,
 }
 
 impl Player {
-    pub fn new(ctx: &mut Context) -> Self {
+    pub fn new(ctx: &mut Context, handle: CollisionObjectHandle) -> Self {
         Player {
             pos: mint::Point2 {x: 64.0, y: 64.0},
             ver: 0.0,
@@ -43,6 +50,7 @@ impl Player {
             walking: false,
             img: graphics::Image::new(ctx, "/images/robin_rundown.png").unwrap(),
             spd: 8.0,
+            col_handle: handle,
         }
     }
 
@@ -55,7 +63,7 @@ impl Player {
         mint::Point2 { x: self.pos.x + mov_norm.x * self.spd, y: self.pos.y + mov_norm.y * self.spd }
     }
 
-    fn update(&mut self) {
+    fn update(&mut self, world: &mut CollisionWorld<f32, ()>) {
         /* self.walking je korisno za animaciju
          * npr. if self.walking {
          *          curr_animation = walk_animation;
@@ -69,7 +77,14 @@ impl Player {
             self.walking = true;
         }
         if self.walking {
+            let old_pos = self.pos.clone();
             self.pos = self.pos_from_move();
+            world.set_position(self.col_handle, Isometry2::new(Vector2::new(self.pos.x, self.pos.y), 0.0));
+            if world.contacts_with(self.col_handle, true).unwrap().count() > 0 {
+                self.pos = old_pos;
+                world.set_position(self.col_handle, Isometry2::new(Vector2::new(self.pos.x, self.pos.y), 0.0));
+            }
+            
         }
     }
 
@@ -85,14 +100,26 @@ impl Player {
 struct GameState {
     castle_map: map::Map,
     player: Player,
+    world: CollisionWorld<f32, ()>,
     last_update: Instant,
 }
 
 impl GameState {
     pub fn new(ctx: &mut Context) -> Self {
+        let mut world_mut = CollisionWorld::new(0.02);
+        let shape = ShapeHandle::new(Cuboid::new(Vector2::new(10.0, 10.0)));
+        let mut groups = CollisionGroups::new();
+        groups.set_membership(&[0 as usize]);
+        groups.set_blacklist(&[0 as usize]);
+        groups.set_whitelist(&[1 as usize]);
+        let query = GeometricQueryType::Contacts(0.0, 0.0);
+
+        // let player_handle = world_mut.add(Isometry2::new(Vector2::new(64.0, 64.0), 0.0), shape.clone(), groups, query, ()); // player
+
         GameState {
-            castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }).unwrap(),
-            player: Player::new(ctx),
+            castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
+            player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 64.0), 0.0), shape.clone(), groups, query, ()).handle()),
+            world: world_mut,
             last_update: Instant::now(),
         }
     }
@@ -102,7 +129,14 @@ impl event::EventHandler for GameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
-            self.player.update();
+            self.player.update(&mut self.world);
+            self.world.update();
+            /*if self.world.contacts_with(self.player.col_handle, true).unwrap().count() > 0 {
+                println!("COLLISION HAPPENED!");
+            } else {
+                println!("NO COLLISIONS!");
+            }
+            */
             self.last_update = Instant::now();
         }
         Ok(())
