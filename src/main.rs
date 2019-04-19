@@ -85,7 +85,7 @@ impl Player {
         }
     }
 
-    fn update(&mut self, world: &mut CollisionWorld<f32, ()>, map_handle: CollisionObjectHandle) {
+    fn update(&mut self, ctx: &mut Context, world: &mut CollisionWorld<f32, ()>, map_handle: CollisionObjectHandle) {
         /* self.walking je korisno za animaciju
          * npr. if self.walking {
          *          curr_animation = walk_animation;
@@ -99,6 +99,66 @@ impl Player {
             self.walking = true;
         }
         if self.walking {
+            // mora da postoji neki bolji nacin da se ovo uradi
+            let mut old_dir = self.direction.clone();
+            if self.collision_hor == CollisionDirection::Left && input::keyboard::is_key_pressed(ctx, event::KeyCode::Left) {
+                self.direction = old_dir;
+                self.direction.x = -1.0;
+                let new_pos = self.pos_from_move();
+                world.set_position(self.col_handle, self.shape_pos(Some(new_pos)));
+                match world.contact_pair(self.col_handle, map_handle, true) {
+                    Some(_) => (),
+                    None => {
+                        self.collision_hor = CollisionDirection::Null;
+                        old_dir.x = -1.0;
+                        ()
+                    },
+                }
+            }
+            if self.collision_hor == CollisionDirection::Right && input::keyboard::is_key_pressed(ctx, event::KeyCode::Right){
+                self.direction = old_dir;
+                self.direction.x = 1.0;
+                let new_pos = self.pos_from_move();
+                world.set_position(self.col_handle, self.shape_pos(Some(new_pos)));
+                match world.contact_pair(self.col_handle, map_handle, true) {
+                    Some(_) => (),
+                    None => {
+                        self.collision_hor = CollisionDirection::Null;
+                        old_dir.x = 1.0;
+                        ()
+                    },
+                }
+            }
+            if self.collision_ver == CollisionDirection::Up && input::keyboard::is_key_pressed(ctx, event::KeyCode::Up) {
+                self.direction = old_dir;
+                self.direction.y = -1.0;
+                let new_pos = self.pos_from_move();
+                world.set_position(self.col_handle, self.shape_pos(Some(new_pos)));
+                match world.contact_pair(self.col_handle, map_handle, true) {
+                    Some(_) => (),
+                    None => {
+                        self.collision_hor = CollisionDirection::Null;
+                        old_dir.y = -1.0;
+                        ()
+                    },
+                }
+            }
+            if self.collision_ver == CollisionDirection::Down && input::keyboard::is_key_pressed(ctx, event::KeyCode::Down) {
+                self.direction = old_dir;
+                self.direction.y = 1.0;
+                let new_pos = self.pos_from_move();
+                world.set_position(self.col_handle, self.shape_pos(Some(new_pos)));
+                match world.contact_pair(self.col_handle, map_handle, true) {
+                    Some(_) => (),
+                    None => {
+                        self.collision_hor = CollisionDirection::Null;
+                        old_dir.y = 1.0;
+                        ()
+                    },
+                }
+            }
+            self.direction = old_dir;
+            world.set_position(self.col_handle, self.shape_pos(None));
             if self.collision_hor == CollisionDirection::Right && self.direction.x == -1.0 {
                 self.collision_hor = CollisionDirection::Null;
             }
@@ -111,8 +171,6 @@ impl Player {
             if self.collision_ver == CollisionDirection::Up && self.direction.y == 1.0 {
                 self.collision_ver = CollisionDirection::Null;
             }
-
-
 
             match world.contact_pair(self.col_handle, map_handle, true) {
                 Some(c) => { let col = c.3;
@@ -155,13 +213,15 @@ impl Player {
         }
     }
 
-    fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+    fn draw(&self, ctx: &mut Context, show_mesh: bool) -> GameResult<()> {
         graphics::draw(ctx, &self.img, graphics::DrawParam::new()
                        .src(graphics::Rect::new(0.0, 0.0, 1.0/7.0, 1.0))
                        //.scale(mint::Vector2 { x: 1.3, y: 1.3 })
                        .dest(self.pos))?;
-        let shape_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), graphics::Rect::new(self.shape_pos(None).translation.vector.x, self.shape_pos(None).translation.vector.y, 20.0, 10.0), [1.0, 0.0, 0.0, 1.0].into()).build(ctx)?;
-        graphics::draw(ctx, &shape_mesh, graphics::DrawParam::new())?;
+        if show_mesh {
+            let shape_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), graphics::Rect::new(self.shape_pos(None).translation.vector.x, self.shape_pos(None).translation.vector.y, 20.0, 10.0), [1.0, 0.0, 0.0, 1.0].into()).build(ctx)?;
+            graphics::draw(ctx, &shape_mesh, graphics::DrawParam::new())?;
+        }
         Ok(())
     }
 }
@@ -193,10 +253,10 @@ impl GameState {
 }
 
 impl event::EventHandler for GameState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
         // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
-            self.player.update(&mut self.world, self.castle_map.map_handle);
+            self.player.update(ctx, &mut self.world, self.castle_map.map_handle);
             self.world.update();
             self.last_update = Instant::now();
         }
@@ -205,8 +265,8 @@ impl event::EventHandler for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into());
-        self.castle_map.draw(ctx)?;
-        self.player.draw(ctx)?;
+        self.castle_map.draw(ctx, false)?;
+        self.player.draw(ctx, false)?;
         graphics::present(ctx)?;
         timer::yield_now();
         Ok(())

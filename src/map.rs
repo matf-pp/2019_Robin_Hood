@@ -163,7 +163,7 @@ impl Map {
             })
         }
 
-    pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+    pub fn draw(&mut self, ctx: &mut Context, show_mesh: bool) -> GameResult<()> {
         for row in self.map_matrix.iter() {
             for tile in row.iter() {
                 self.map_spritebatch.add(tile.drawparam(self.map_start));
@@ -172,16 +172,18 @@ impl Map {
         self.map_spritebatch.set_filter(graphics::FilterMode::Nearest);
         graphics::draw(ctx, &self.map_spritebatch, graphics::DrawParam::new())?;
         self.map_spritebatch.clear();
-        let mut tile_mesh: graphics::Mesh;
-        for row in self.map_matrix.iter() {
-            for tile in row.iter() {
-                match tile.tile_type {
-                    TileType::Wall(_) => { 
-                        tile_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), [tile.drawparam(self.map_start).dest.x, tile.drawparam(self.map_start).dest.y, tile.tile_size.x, tile.tile_size.y].into(), [0.0, 1.0, 0.0, 1.0].into()).build(ctx)?;
-                        graphics::draw(ctx, &tile_mesh, graphics::DrawParam::new())?;
-                        ()
-                    },
-                    TileType::Floor(_) => (),
+        if show_mesh {
+            let mut tile_mesh: graphics::Mesh;
+            for row in self.map_matrix.iter() {
+                for tile in row.iter() {
+                    match tile.tile_type {
+                        TileType::Wall(_) => { 
+                            tile_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), [tile.drawparam(self.map_start).dest.x, tile.drawparam(self.map_start).dest.y, tile.tile_size.x, tile.tile_size.y].into(), [0.0, 1.0, 0.0, 1.0].into()).build(ctx)?;
+                            graphics::draw(ctx, &tile_mesh, graphics::DrawParam::new())?;
+                            ()
+                        },
+                        TileType::Floor(_) => (),
+                    }
                 }
             }
         }
