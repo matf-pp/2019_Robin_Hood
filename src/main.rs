@@ -111,6 +111,47 @@ impl Player {
             if self.collision_ver == CollisionDirection::Up && self.direction.y == 1.0 {
                 self.collision_ver = CollisionDirection::Null;
             }
+
+
+
+            match world.contact_pair(self.col_handle, map_handle, true) {
+                Some(c) => { let col = c.3;
+                    let dcontact = &col.deepest_contact().unwrap().contact;
+                    let ddepth = dcontact.depth;
+                    let dvector = dcontact.normal.into_inner();
+                    if ddepth >= 0.0 {
+                        if dvector.x == -1.0 && self.direction.x == 1.0 {
+                            self.collision_hor = CollisionDirection::Right;
+                            self.direction.x = 0.0;
+                        }
+                        if dvector.x == 1.0 && self.direction.x == -1.0 {
+                            self.collision_hor = CollisionDirection::Left;
+                            self.direction.x = 0.0;
+                        }
+                        if dvector.y == -1.0 && self.direction.y == 1.0 {
+                            self.collision_ver = CollisionDirection::Down;
+                            self.direction.y = 0.0;
+                        }
+                        if dvector.y == 1.0 && self.direction.y == -1.0 {
+                            self.collision_ver = CollisionDirection::Up;
+                            self.direction.y = 0.0;
+                        }
+                    }
+                    // self.pos = mint::Point2 { x: self.pos.x+dvector.x*(ddepth), y: self.pos.y+dvector.y*(ddepth) };
+                    // self.pos = self.pos_from_move();
+
+                    // world.set_position(self.col_handle, self.shape_pos(None));
+                    ()
+                },
+                None => { self.collision_ver = CollisionDirection::Null;
+                    self.collision_hor = CollisionDirection::Null;
+                    ();
+                }
+
+            }
+            self.pos = self.pos_from_move();
+            world.set_position(self.col_handle, self.shape_pos(None));
+
         }
     }
 
@@ -119,6 +160,8 @@ impl Player {
                        .src(graphics::Rect::new(0.0, 0.0, 1.0/7.0, 1.0))
                        //.scale(mint::Vector2 { x: 1.3, y: 1.3 })
                        .dest(self.pos))?;
+        let shape_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), graphics::Rect::new(self.shape_pos(None).translation.vector.x, self.shape_pos(None).translation.vector.y, 20.0, 10.0), [1.0, 0.0, 0.0, 1.0].into()).build(ctx)?;
+        graphics::draw(ctx, &shape_mesh, graphics::DrawParam::new())?;
         Ok(())
     }
 }
@@ -133,18 +176,16 @@ struct GameState {
 impl GameState {
     pub fn new(ctx: &mut Context) -> Self {
         let mut world_mut = CollisionWorld::new(0.02);
-        let shape = ShapeHandle::new(Cuboid::new(Vector2::new(10.0, 10.0)));
+        let shape = ShapeHandle::new(Cuboid::new(Vector2::new(11.0, 6.0)));
         let mut groups = CollisionGroups::new();
         groups.set_membership(&[0 as usize]);
         groups.set_blacklist(&[0 as usize]);
         groups.set_whitelist(&[1 as usize]);
         let query = GeometricQueryType::Contacts(0.0, 0.0);
 
-        // let player_handle = world_mut.add(Isometry2::new(Vector2::new(64.0, 64.0), 0.0), shape.clone(), groups, query, ()); // player
-
         GameState {
             castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
-            player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 64.0), 0.0), shape.clone(), groups, query, ()).handle()),
+            player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 74.0), 0.0), shape.clone(), groups, query, ()).handle()),
             world: world_mut,
             last_update: Instant::now(),
         }
