@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 
 const SCREEN_SIZE: (f32, f32) = (
     640.0, 480.0
-);
+    );
 
 const UPDATES_PER_SECOND: f32 = 30.0;
 const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
@@ -30,11 +30,21 @@ struct Animation {
     fps: f32,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum CollisionDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+    Null,
+}
+
 #[derive(Debug)]
 struct Player {
     pos: mint::Point2<f32>,
-    ver: f32,
-    hor: f32,
+    direction: Vector2<f32>,
+    collision_ver: CollisionDirection,
+    collision_hor: CollisionDirection,
     walking: bool,
     img: graphics::Image, // TODO: zameniti graphics::Image sa mnogo efikasnijom varijantom graphics::spritebatch
     spd: f32,
@@ -45,11 +55,12 @@ impl Player {
     pub fn new(ctx: &mut Context, handle: CollisionObjectHandle) -> Self {
         Player {
             pos: mint::Point2 {x: 64.0, y: 64.0},
-            ver: 0.0,
-            hor: 0.0,
+            direction: Vector2::new(0.0, 0.0),
+            collision_ver: CollisionDirection::Null,
+            collision_hor: CollisionDirection::Null,
             walking: false,
             img: graphics::Image::new(ctx, "/images/robin_rundown.png").unwrap(),
-            spd: 8.0,
+            spd: 4.0,
             col_handle: handle,
         }
     }
@@ -58,12 +69,23 @@ impl Player {
         // ova f-ja se poziva pri svakom apdejtu
         // na osnovu trenutne pozicije i pravca kretanja
         // vraca "sledecu" poziciju igraca
-        let mov = nalgebra::Vector2::new(self.hor, self.ver);
-        let mov_norm = mov.normalize();
-        mint::Point2 { x: self.pos.x + mov_norm.x * self.spd, y: self.pos.y + mov_norm.y * self.spd }
+        let mut norm_dir = Vector2::new(0.0, 0.0);
+        if self.direction.x != 0.0 || self.direction.y != 0.0 {
+            norm_dir = self.direction.normalize();
+        }
+
+        mint::Point2 { x: self.pos.x + norm_dir.x * self.spd, y: self.pos.y + norm_dir.y * self.spd }
     }
 
-    fn update(&mut self, world: &mut CollisionWorld<f32, ()>) {
+    pub fn shape_pos(&self, p: Option<mint::Point2<f32>>) -> Isometry2<f32> {
+        // Collider zahteva Isometry2 za poziciju oblika
+        match p {
+            Some(d) => Isometry2::new(Vector2::new(d.x+0.0, d.y+10.0), 0.0),
+            None => Isometry2::new(Vector2::new(self.pos.x+0.0, self.pos.y+10.0), 0.0),
+        }
+    }
+
+    fn update(&mut self, world: &mut CollisionWorld<f32, ()>, map_handle: CollisionObjectHandle) {
         /* self.walking je korisno za animaciju
          * npr. if self.walking {
          *          curr_animation = walk_animation;
@@ -71,20 +93,24 @@ impl Player {
          *          curr_animation = idle_animation;
          *      }
          */
-        if self.ver == 0.0 && self.hor == 0.0 {
+        if self.direction.x == 0.0 && self.direction.y == 0.0 {
             self.walking = false;
         } else {
             self.walking = true;
         }
         if self.walking {
-            let old_pos = self.pos.clone();
-            self.pos = self.pos_from_move();
-            world.set_position(self.col_handle, Isometry2::new(Vector2::new(self.pos.x, self.pos.y), 0.0));
-            if world.contacts_with(self.col_handle, true).unwrap().count() > 0 {
-                self.pos = old_pos;
-                world.set_position(self.col_handle, Isometry2::new(Vector2::new(self.pos.x, self.pos.y), 0.0));
+            if self.collision_hor == CollisionDirection::Right && self.direction.x == -1.0 {
+                self.collision_hor = CollisionDirection::Null;
             }
-            
+            if self.collision_hor == CollisionDirection::Left && self.direction.x == 1.0 {
+                self.collision_hor = CollisionDirection::Null;
+            }
+            if self.collision_ver == CollisionDirection::Down && self.direction.y == -1.0 {
+                self.collision_ver = CollisionDirection::Null;
+            }
+            if self.collision_ver == CollisionDirection::Up && self.direction.y == 1.0 {
+                self.collision_ver = CollisionDirection::Null;
+            }
         }
     }
 
@@ -129,14 +155,8 @@ impl event::EventHandler for GameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
-            self.player.update(&mut self.world);
+            self.player.update(&mut self.world, self.castle_map.map_handle);
             self.world.update();
-            /*if self.world.contacts_with(self.player.col_handle, true).unwrap().count() > 0 {
-                println!("COLLISION HAPPENED!");
-            } else {
-                println!("NO COLLISIONS!");
-            }
-            */
             self.last_update = Instant::now();
         }
         Ok(())
@@ -159,10 +179,10 @@ impl event::EventHandler for GameState {
         _repeat: bool,
         ) {
         match keycode {
-            event::KeyCode::Up => self.player.ver = -1.0,
-            event::KeyCode::Down => self.player.ver = 1.0,
-            event::KeyCode::Left => self.player.hor = -1.0,
-            event::KeyCode::Right => self.player.hor = 1.0,
+            event::KeyCode::Up if self.player.collision_ver != CollisionDirection::Up => self.player.direction.y = -1.0,
+            event::KeyCode::Down if self.player.collision_ver != CollisionDirection::Down => self.player.direction.y = 1.0,
+            event::KeyCode::Left if self.player.collision_hor != CollisionDirection::Left => self.player.direction.x = -1.0,
+            event::KeyCode::Right if self.player.collision_hor != CollisionDirection::Right => self.player.direction.x = 1.0,
             _ => (),
         }
     } 
@@ -173,10 +193,10 @@ impl event::EventHandler for GameState {
         _keymod: event::KeyMods,
         ) {
         match keycode {
-            event::KeyCode::Up if self.player.ver == -1.0 => self.player.ver = 0.0,
-            event::KeyCode::Down if self.player.ver == 1.0 => self.player.ver = 0.0,
-            event::KeyCode::Left if self.player.hor == -1.0 => self.player.hor = 0.0,
-            event::KeyCode::Right if self.player.hor == 1.0 => self.player.hor = 0.0,
+            event::KeyCode::Up if self.player.direction.y == -1.0 => self.player.direction.y = 0.0,
+            event::KeyCode::Down if self.player.direction.y == 1.0 => self.player.direction.y = 0.0,
+            event::KeyCode::Left if self.player.direction.x == -1.0 => self.player.direction.x = 0.0,
+            event::KeyCode::Right if self.player.direction.x == 1.0 => self.player.direction.x = 0.0,
             _ => (),
         }
     }
