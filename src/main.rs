@@ -80,8 +80,8 @@ impl Player {
     pub fn shape_pos(&self, p: Option<mint::Point2<f32>>) -> Isometry2<f32> {
         // Collider zahteva Isometry2 za poziciju oblika
         match p {
-            Some(d) => Isometry2::new(Vector2::new(d.x+0.0, d.y+10.0), 0.0),
-            None => Isometry2::new(Vector2::new(self.pos.x+0.0, self.pos.y+10.0), 0.0),
+            Some(d) => Isometry2::new(Vector2::new(d.x-1.5, d.y+8.0), 0.0),
+            None => Isometry2::new(Vector2::new(self.pos.x-1.5, self.pos.y+8.0), 0.0),
         }
     }
 
@@ -173,37 +173,43 @@ impl Player {
             }
 
             match world.contact_pair(self.col_handle, map_handle, true) {
-                Some(c) => { let col = c.3;
+                Some(c) => { 
+                    let col = c.3;
                     let dcontact = &col.deepest_contact().unwrap().contact;
                     let ddepth = dcontact.depth;
                     let dvector = dcontact.normal.into_inner();
-                    if ddepth >= 0.0 {
+                    if ddepth >= 0.0 && ddepth < 13.0 {
                         if dvector.x == -1.0 && self.direction.x == 1.0 {
                             self.collision_hor = CollisionDirection::Right;
                             self.direction.x = 0.0;
+                            self.pos = mint::Point2 { x: self.pos.x-ddepth, y: self.pos.y };
                         }
                         if dvector.x == 1.0 && self.direction.x == -1.0 {
                             self.collision_hor = CollisionDirection::Left;
                             self.direction.x = 0.0;
+                            self.pos = mint::Point2 { x: self.pos.x-ddepth, y: self.pos.y };
                         }
                         if dvector.y == -1.0 && self.direction.y == 1.0 {
                             self.collision_ver = CollisionDirection::Down;
                             self.direction.y = 0.0;
+                            self.pos = mint::Point2 { x: self.pos.x, y: self.pos.y-ddepth };
                         }
                         if dvector.y == 1.0 && self.direction.y == -1.0 {
                             self.collision_ver = CollisionDirection::Up;
                             self.direction.y = 0.0;
+                            self.pos = mint::Point2 { x: self.pos.x, y: self.pos.y+ddepth};
                         }
+                        // self.pos = mint::Point2 { x: self.pos.x+dvector.x*(ddepth), y: self.pos.y+dvector.y*(ddepth) };
                     }
-                    // self.pos = mint::Point2 { x: self.pos.x+dvector.x*(ddepth), y: self.pos.y+dvector.y*(ddepth) };
                     // self.pos = self.pos_from_move();
 
                     // world.set_position(self.col_handle, self.shape_pos(None));
                     ()
                 },
-                None => { self.collision_ver = CollisionDirection::Null;
+                None => { 
+                    self.collision_ver = CollisionDirection::Null;
                     self.collision_hor = CollisionDirection::Null;
-                    ();
+                    ()
                 }
 
             }
@@ -219,7 +225,7 @@ impl Player {
                        //.scale(mint::Vector2 { x: 1.3, y: 1.3 })
                        .dest(self.pos))?;
         if show_mesh {
-            let shape_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), graphics::Rect::new(self.shape_pos(None).translation.vector.x, self.shape_pos(None).translation.vector.y, 20.0, 10.0), [1.0, 0.0, 0.0, 1.0].into()).build(ctx)?;
+            let shape_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), graphics::Rect::new(self.shape_pos(None).translation.vector.x, self.shape_pos(None).translation.vector.y, 24.0, 16.0), [1.0, 0.0, 0.0, 1.0].into()).build(ctx)?;
             graphics::draw(ctx, &shape_mesh, graphics::DrawParam::new())?;
         }
         Ok(())
@@ -236,7 +242,7 @@ struct GameState {
 impl GameState {
     pub fn new(ctx: &mut Context) -> Self {
         let mut world_mut = CollisionWorld::new(0.02);
-        let shape = ShapeHandle::new(Cuboid::new(Vector2::new(11.0, 6.0)));
+        let shape = ShapeHandle::new(Cuboid::new(Vector2::new(12.0, 8.0)));
         let mut groups = CollisionGroups::new();
         groups.set_membership(&[0 as usize]);
         groups.set_blacklist(&[0 as usize]);
@@ -265,8 +271,9 @@ impl event::EventHandler for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into());
-        self.castle_map.draw(ctx, false)?;
+        self.castle_map.draw(ctx, 1, false)?;
         self.player.draw(ctx, false)?;
+        self.castle_map.draw(ctx, 2, false)?;
         graphics::present(ctx)?;
         timer::yield_now();
         Ok(())
