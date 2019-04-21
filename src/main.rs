@@ -24,10 +24,40 @@ struct Animation {
     spritesheet: graphics::Image,
     width: f32,
     height: f32,
-    frames_hor: i32,
-    frames_ver: i32,
-    curr_frame: i32,
-    fps: f32,
+    frames_hor: f32,
+    frames_ver: f32,
+    curr_frame: f32,
+    src_rect: graphics::Rect,
+}
+
+impl Animation {
+    pub fn new<P>(ctx: &mut Context, filename: P) -> Self    // sta animacija prima kao argument
+    where 
+    P: AsRef<Path>,
+    {    
+        Animation {
+            spritesheet: graphics::Image::new(ctx, filename).unwrap(),
+            width: 224.0,        // width slike robin_run* u pikselima
+            height: 32.0,        // height slike robin_run* u pikselima
+            frames_hor: 7.0,             
+            frames_ver: 1.0,
+            curr_frame: 0.0,
+            src_rect: graphics::Rect::new(0.0,0.0,1.0/frames_hor, 1.0/frames_ver),
+        }
+    }
+    
+    fn next_frame(&mut self) {
+        self.curr_frame = ((self.curr_frame as i32 + 1) mod 7) as f32;
+        self.src_rect.x = self.curr_frame/self.frames_hor;
+        // y ne moramo da pomeramo jer je slika horizontalna
+    }
+    
+    fn draw(&self,ctx: &mut Context, pos: mint::Point2<f32>) -> GameResult<()> {
+        graphics::draw(ctx, &self.spritesheet, graphics::DrawParam::new().src(self.src_rect).dest(pos))?;
+        ()
+    }
+    
+    
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,7 +76,7 @@ struct Player {
     collision_ver: CollisionDirection,
     collision_hor: CollisionDirection,
     walking: bool,
-    img: graphics::Image, // TODO: zameniti graphics::Image sa mnogo efikasnijom varijantom graphics::spritebatch
+    img: graphics::Image,
     spd: f32,
     col_handle: CollisionObjectHandle,
 }
@@ -222,7 +252,6 @@ impl Player {
     fn draw(&self, ctx: &mut Context, show_mesh: bool) -> GameResult<()> {
         graphics::draw(ctx, &self.img, graphics::DrawParam::new()
                        .src(graphics::Rect::new(0.0, 0.0, 1.0/7.0, 1.0))
-                       //.scale(mint::Vector2 { x: 1.3, y: 1.3 })
                        .dest(self.pos))?;
         if show_mesh {
             let shape_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), graphics::Rect::new(self.shape_pos(None).translation.vector.x, self.shape_pos(None).translation.vector.y, 24.0, 16.0), [1.0, 0.0, 0.0, 1.0].into()).build(ctx)?;
