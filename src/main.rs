@@ -4,6 +4,7 @@ extern crate nalgebra as na;
 
 mod map;
 
+use std::path::Path;
 use ggez::*;
 use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, ShapeHandle};
@@ -42,26 +43,29 @@ impl Animation {
             frames_hor: 7.0,             
             frames_ver: 1.0,
             curr_frame: 0.0,
-            src_rect: graphics::Rect::new(0.0,0.0,1.0/frames_hor, 1.0/frames_ver),
+            src_rect: graphics::Rect::new(0.0,0.0,1.0/7.0, 1.0),
         }
     }
     
+    fn reset(&mut self) {
+        self.curr_frame = 0.0;
+        self.src_rect.x = 0.0;
+    }
+    
     fn next_frame(&mut self) {
-        self.curr_frame = ((self.curr_frame as i32 + 1) mod 7) as f32;
+        self.curr_frame = ((self.curr_frame as i32 + 1) % 7) as f32;
         self.src_rect.x = self.curr_frame/self.frames_hor;
         // y ne moramo da pomeramo jer je slika horizontalna
     }
     
     fn draw(&self,ctx: &mut Context, pos: mint::Point2<f32>) -> GameResult<()> {
         graphics::draw(ctx, &self.spritesheet, graphics::DrawParam::new().src(self.src_rect).dest(pos))?;
-        ()
-    }
-    
-    
+        Ok(())
+    }  
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum CollisionDirection {
+enum Direction {
     Up,
     Down,
     Left,
@@ -73,10 +77,15 @@ enum CollisionDirection {
 struct Player {
     pos: mint::Point2<f32>,
     direction: Vector2<f32>,
-    collision_ver: CollisionDirection,
-    collision_hor: CollisionDirection,
+    collision_ver: Direction,
+    collision_hor: Direction,
     walking: bool,
-    img: graphics::Image,
+    run_left: Animation,
+    run_right: Animation,
+    run_down: Animation,
+    run_up: Animation,
+    idle: graphics::Image,
+    animation_state: Direction,
     spd: f32,
     col_handle: CollisionObjectHandle,
 }
@@ -86,12 +95,18 @@ impl Player {
         Player {
             pos: mint::Point2 {x: 64.0, y: 64.0},
             direction: Vector2::new(0.0, 0.0),
-            collision_ver: CollisionDirection::Null,
-            collision_hor: CollisionDirection::Null,
+            collision_ver: Direction::Null,
+            collision_hor: Direction::Null,
             walking: false,
-            img: graphics::Image::new(ctx, "/images/robin_rundown.png").unwrap(),
+            run_left: Animation::new(ctx, "/images/robin_runleft.png"),
+            run_right: Animation::new(ctx, "/images/robin_runright.png"),
+            run_down: Animation::new(ctx, "/images/robin_rundown.png"),
+            run_up: Animation::new(ctx, "/images/robin_runup.png"),
+            idle: graphics::Image::new(ctx, "/images/robin_idle.png").unwrap(),
+            animation_state: Direction::Null,
             spd: 4.0,
             col_handle: handle,
+            
         }
     }
 
@@ -125,13 +140,27 @@ impl Player {
          */
         if self.direction.x == 0.0 && self.direction.y == 0.0 {
             self.walking = false;
+            self.animation_state = Direction::Null;
+            self.run_right.reset();
+            self.run_left.reset();
+            self.run_down.reset();
+            self.run_up.reset();
+            
         } else {
             self.walking = true;
         }
         if self.walking {
+            match self.animation_state {
+                Direction::Right => self.run_right.next_frame(),
+                Direction::Left => self.run_left.next_frame(),
+                Direction::Up => self.run_up.next_frame(),
+                Direction::Down => self.run_down.next_frame(),
+                Direction::Null => (),
+            } 
+        
             // mora da postoji neki bolji nacin da se ovo uradi
             let mut old_dir = self.direction.clone();
-            if self.collision_hor == CollisionDirection::Left && input::keyboard::is_key_pressed(ctx, event::KeyCode::Left) {
+            if self.collision_hor == Direction::Left && input::keyboard::is_key_pressed(ctx, event::KeyCode::Left) {
                 self.direction = old_dir;
                 self.direction.x = -1.0;
                 let new_pos = self.pos_from_move();
@@ -139,13 +168,13 @@ impl Player {
                 match world.contact_pair(self.col_handle, map_handle, true) {
                     Some(_) => (),
                     None => {
-                        self.collision_hor = CollisionDirection::Null;
+                        self.collision_hor = Direction::Null;
                         old_dir.x = -1.0;
                         ()
                     },
                 }
             }
-            if self.collision_hor == CollisionDirection::Right && input::keyboard::is_key_pressed(ctx, event::KeyCode::Right){
+            if self.collision_hor == Direction::Right && input::keyboard::is_key_pressed(ctx, event::KeyCode::Right){
                 self.direction = old_dir;
                 self.direction.x = 1.0;
                 let new_pos = self.pos_from_move();
@@ -153,13 +182,13 @@ impl Player {
                 match world.contact_pair(self.col_handle, map_handle, true) {
                     Some(_) => (),
                     None => {
-                        self.collision_hor = CollisionDirection::Null;
+                        self.collision_hor = Direction::Null;
                         old_dir.x = 1.0;
                         ()
                     },
                 }
             }
-            if self.collision_ver == CollisionDirection::Up && input::keyboard::is_key_pressed(ctx, event::KeyCode::Up) {
+            if self.collision_ver == Direction::Up && input::keyboard::is_key_pressed(ctx, event::KeyCode::Up) {
                 self.direction = old_dir;
                 self.direction.y = -1.0;
                 let new_pos = self.pos_from_move();
@@ -167,13 +196,13 @@ impl Player {
                 match world.contact_pair(self.col_handle, map_handle, true) {
                     Some(_) => (),
                     None => {
-                        self.collision_hor = CollisionDirection::Null;
+                        self.collision_hor = Direction::Null;
                         old_dir.y = -1.0;
                         ()
                     },
                 }
             }
-            if self.collision_ver == CollisionDirection::Down && input::keyboard::is_key_pressed(ctx, event::KeyCode::Down) {
+            if self.collision_ver == Direction::Down && input::keyboard::is_key_pressed(ctx, event::KeyCode::Down) {
                 self.direction = old_dir;
                 self.direction.y = 1.0;
                 let new_pos = self.pos_from_move();
@@ -181,7 +210,7 @@ impl Player {
                 match world.contact_pair(self.col_handle, map_handle, true) {
                     Some(_) => (),
                     None => {
-                        self.collision_hor = CollisionDirection::Null;
+                        self.collision_hor = Direction::Null;
                         old_dir.y = 1.0;
                         ()
                     },
@@ -189,17 +218,17 @@ impl Player {
             }
             self.direction = old_dir;
             world.set_position(self.col_handle, self.shape_pos(None));
-            if self.collision_hor == CollisionDirection::Right && self.direction.x == -1.0 {
-                self.collision_hor = CollisionDirection::Null;
+            if self.collision_hor == Direction::Right && self.direction.x == -1.0 {
+                self.collision_hor = Direction::Null;
             }
-            if self.collision_hor == CollisionDirection::Left && self.direction.x == 1.0 {
-                self.collision_hor = CollisionDirection::Null;
+            if self.collision_hor == Direction::Left && self.direction.x == 1.0 {
+                self.collision_hor = Direction::Null;
             }
-            if self.collision_ver == CollisionDirection::Down && self.direction.y == -1.0 {
-                self.collision_ver = CollisionDirection::Null;
+            if self.collision_ver == Direction::Down && self.direction.y == -1.0 {
+                self.collision_ver = Direction::Null;
             }
-            if self.collision_ver == CollisionDirection::Up && self.direction.y == 1.0 {
-                self.collision_ver = CollisionDirection::Null;
+            if self.collision_ver == Direction::Up && self.direction.y == 1.0 {
+                self.collision_ver = Direction::Null;
             }
 
             match world.contact_pair(self.col_handle, map_handle, true) {
@@ -210,22 +239,22 @@ impl Player {
                     let dvector = dcontact.normal.into_inner();
                     if ddepth >= 0.0 && ddepth < 13.0 {
                         if dvector.x == -1.0 && self.direction.x == 1.0 {
-                            self.collision_hor = CollisionDirection::Right;
+                            self.collision_hor = Direction::Right;
                             self.direction.x = 0.0;
                             self.pos = mint::Point2 { x: self.pos.x-ddepth, y: self.pos.y };
                         }
                         if dvector.x == 1.0 && self.direction.x == -1.0 {
-                            self.collision_hor = CollisionDirection::Left;
+                            self.collision_hor = Direction::Left;
                             self.direction.x = 0.0;
                             self.pos = mint::Point2 { x: self.pos.x-ddepth, y: self.pos.y };
                         }
                         if dvector.y == -1.0 && self.direction.y == 1.0 {
-                            self.collision_ver = CollisionDirection::Down;
+                            self.collision_ver = Direction::Down;
                             self.direction.y = 0.0;
                             self.pos = mint::Point2 { x: self.pos.x, y: self.pos.y-ddepth };
                         }
                         if dvector.y == 1.0 && self.direction.y == -1.0 {
-                            self.collision_ver = CollisionDirection::Up;
+                            self.collision_ver = Direction::Up;
                             self.direction.y = 0.0;
                             self.pos = mint::Point2 { x: self.pos.x, y: self.pos.y+ddepth};
                         }
@@ -237,8 +266,8 @@ impl Player {
                     ()
                 },
                 None => { 
-                    self.collision_ver = CollisionDirection::Null;
-                    self.collision_hor = CollisionDirection::Null;
+                    self.collision_ver = Direction::Null;
+                    self.collision_hor = Direction::Null;
                     ()
                 }
 
@@ -250,9 +279,13 @@ impl Player {
     }
 
     fn draw(&self, ctx: &mut Context, show_mesh: bool) -> GameResult<()> {
-        graphics::draw(ctx, &self.img, graphics::DrawParam::new()
-                       .src(graphics::Rect::new(0.0, 0.0, 1.0/7.0, 1.0))
-                       .dest(self.pos))?;
+        match self.animation_state {
+            Direction::Right => self.run_right.draw(ctx, self.pos)?,
+            Direction::Left => self.run_left.draw(ctx, self.pos)?,
+            Direction::Up => self.run_up.draw(ctx, self.pos)?,
+            Direction::Down => self.run_down.draw(ctx, self.pos)?,
+            Direction::Null => graphics::draw(ctx, &self.idle, graphics::DrawParam::new().dest(self.pos))?,
+        }
         if show_mesh {
             let shape_mesh = graphics::MeshBuilder::new().rectangle(graphics::DrawMode::stroke(3.0), graphics::Rect::new(self.shape_pos(None).translation.vector.x, self.shape_pos(None).translation.vector.y, 24.0, 16.0), [1.0, 0.0, 0.0, 1.0].into()).build(ctx)?;
             graphics::draw(ctx, &shape_mesh, graphics::DrawParam::new())?;
@@ -316,10 +349,22 @@ impl event::EventHandler for GameState {
         _repeat: bool,
         ) {
         match keycode {
-            event::KeyCode::Up if self.player.collision_ver != CollisionDirection::Up => self.player.direction.y = -1.0,
-            event::KeyCode::Down if self.player.collision_ver != CollisionDirection::Down => self.player.direction.y = 1.0,
-            event::KeyCode::Left if self.player.collision_hor != CollisionDirection::Left => self.player.direction.x = -1.0,
-            event::KeyCode::Right if self.player.collision_hor != CollisionDirection::Right => self.player.direction.x = 1.0,
+            event::KeyCode::Up if self.player.collision_ver != Direction::Up => {
+                self.player.direction.y = -1.0;
+                self.player.animation_state = Direction::Up;
+            },
+            event::KeyCode::Down if self.player.collision_ver != Direction::Down => {
+                self.player.direction.y = 1.0;
+                self.player.animation_state = Direction::Down;
+            },
+            event::KeyCode::Left if self.player.collision_hor != Direction::Left => {
+                self.player.direction.x = -1.0;
+                self.player.animation_state = Direction::Left;
+            },
+            event::KeyCode::Right if self.player.collision_hor != Direction::Right => {
+                self.player.direction.x = 1.0;
+                self.player.animation_state = Direction::Right;
+            },
             _ => (),
         }
     } 
