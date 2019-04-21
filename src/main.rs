@@ -146,9 +146,23 @@ impl Player {
             self.run_down.reset();
             self.run_up.reset();
             
-        } else {
+        } else if self.direction.x == 1.0 && self.direction.y == 0.0 {
+            self.animation_state = Direction::Right;
             self.walking = true;
         }
+        else if self.direction.x == -1.0 && self.direction.y == 0.0 {
+            self.animation_state = Direction::Left;
+            self.walking = true;
+        }
+        else if self.direction.x == 0.0 && self.direction.y == 1.0 {
+            self.animation_state = Direction::Down;
+            self.walking = true;
+        }
+        else if self.direction.x == 0.0 && self.direction.y == -1.0 {
+            self.animation_state = Direction::Up;
+            self.walking = true;
+        }
+        else { self.walking = true; }
         if self.walking {
             match self.animation_state {
                 Direction::Right => self.run_right.next_frame(),
