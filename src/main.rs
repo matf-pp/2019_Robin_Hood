@@ -6,6 +6,7 @@ extern crate nalgebra as na;
 mod map;
 
 use std::path::Path;
+use std::f32::consts::PI;
 use ggez::*;
 use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, ShapeHandle};
@@ -313,9 +314,7 @@ impl Player {
 struct Guard {
     pos: mint::Point2<f32>,
     direction: Vector2<f32>,
-    room_start: mint::Point2<f32>,   // svaki strazar ce cuvati jednu prostoriju
-    room_end: mint::Point2<f32>,     // room_start i room_end su odgovarajuce koordinate sobe
-    run_left: Animation,             // po kojoj ce strazar patrolirati
+    run_left: Animation,
     run_right: Animation,
     run_down: Animation,
     run_up: Animation,
@@ -337,9 +336,7 @@ impl Guard {
         }
         Guard {
             pos: mint:: Point2 {x: patrol[0].x , y: patrol[0].y }, // pocetna tacka strazara je sredina sobe
-            direction: Vector2::new(0.0,0.0),
-            room_start: coor_1,
-            room_end: coor_2,
+            direction: Vector2::new(0.0, 0.0),
             run_left: Animation::new(ctx, "/images/guard_runleft.png"),
             run_right: Animation::new(ctx, "/images/guard_runright.png"),
             run_down: Animation::new(ctx, "/images/guard_rundown.png"),
@@ -372,8 +369,7 @@ impl Guard {
 
         mint::Point2 { x: self.pos.x + norm_dir.x * self.spd, y: self.pos.y + norm_dir.y * self.spd }
     }
-    fn update (&mut self) {
-
+    fn update (&mut self, ctx: &mut Context) {
         if (self.pos.x.abs() - self.next_point.x.abs()).abs() > (self.spd + 0.2) &&
            (self.pos.y.abs() - self.next_point.y.abs()).abs() > (self.spd + 0.2) {
             self.pos = self.pos_from_move();
@@ -403,8 +399,15 @@ impl Guard {
             Direction::Null => (),
         }
 
+
     }
     fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+        let vec1 = Isometry2::new(Vector2::new(0.0,0.0), PI/6.0).transform_vector(&self.direction)*64.0;
+        let vec2 = Isometry2::new(Vector2::new(0.0,0.0), -PI/6.0).transform_vector(&self.direction)*64.0;
+        let origin_point = mint::Point2 {x: self.pos.x+16.0, y: self.pos.y +13.0};
+        let vision = graphics::Mesh::from_triangles(ctx, &[origin_point, mint::Point2 {x: origin_point.x + vec1.x, y: origin_point.y + vec1.y},
+            mint::Point2{x: origin_point.x + vec2.x, y: origin_point.y + vec2.y}], [1.0, 0.0, 0.0, 0.5].into())?;
+        graphics::draw(ctx, &vision, graphics::DrawParam::new())?;
         match self.animation_state {
             Direction::Right => self.run_right.draw(ctx, self.pos)?,
             Direction::Left => self.run_left.draw(ctx, self.pos)?,
@@ -450,7 +453,7 @@ impl event::EventHandler for GameState {
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
             self.player.update(ctx, &mut self.world, self.castle_map.map_handle);
             self.world.update();
-            self.guard.update();
+            self.guard.update(ctx);
             self.last_update = Instant::now();
         }
         Ok(())
