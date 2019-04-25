@@ -1,5 +1,6 @@
 extern crate ggez;
 extern crate ncollide2d;
+extern crate rand;
 extern crate nalgebra as na;
 
 mod map;
@@ -9,6 +10,7 @@ use ggez::*;
 use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, ShapeHandle};
 use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
+use rand::{thread_rng, Rng};
 
 use std::time::{Duration, Instant};
 
@@ -33,35 +35,35 @@ struct Animation {
 
 impl Animation {
     pub fn new<P>(ctx: &mut Context, filename: P) -> Self    // sta animacija prima kao argument
-    where 
+    where
     P: AsRef<Path>,
-    {    
+    {
         Animation {
             spritesheet: graphics::Image::new(ctx, filename).unwrap(),
             width: 224.0,        // width slike robin_run* u pikselima
             height: 32.0,        // height slike robin_run* u pikselima
-            frames_hor: 7.0,             
+            frames_hor: 7.0,
             frames_ver: 1.0,
             curr_frame: 0.0,
             src_rect: graphics::Rect::new(0.0,0.0,1.0/7.0, 1.0),
         }
     }
-    
+
     fn reset(&mut self) {
         self.curr_frame = 0.0;
         self.src_rect.x = 0.0;
     }
-    
+
     fn next_frame(&mut self) {
         self.curr_frame = ((self.curr_frame as i32 + 1) % 7) as f32;
         self.src_rect.x = self.curr_frame/self.frames_hor;
         // y ne moramo da pomeramo jer je slika horizontalna
     }
-    
+
     fn draw(&self,ctx: &mut Context, pos: mint::Point2<f32>) -> GameResult<()> {
         graphics::draw(ctx, &self.spritesheet, graphics::DrawParam::new().src(self.src_rect).dest(pos))?;
         Ok(())
-    }  
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -106,7 +108,7 @@ impl Player {
             animation_state: Direction::Null,
             spd: 4.0,
             col_handle: handle,
-            
+
         }
     }
 
@@ -145,7 +147,7 @@ impl Player {
             self.run_left.reset();
             self.run_down.reset();
             self.run_up.reset();
-            
+
         } else if self.direction.x == 1.0 && self.direction.y == 0.0 {
             self.animation_state = Direction::Right;
             self.walking = true;
@@ -170,8 +172,8 @@ impl Player {
                 Direction::Up => self.run_up.next_frame(),
                 Direction::Down => self.run_down.next_frame(),
                 Direction::Null => (),
-            } 
-        
+            }
+
             // mora da postoji neki bolji nacin da se ovo uradi
             let mut old_dir = self.direction.clone();
             if self.collision_hor == Direction::Left && input::keyboard::is_key_pressed(ctx, event::KeyCode::Left) {
@@ -246,7 +248,7 @@ impl Player {
             }
 
             match world.contact_pair(self.col_handle, map_handle, true) {
-                Some(c) => { 
+                Some(c) => {
                     let col = c.3;
                     let dcontact = &col.deepest_contact().unwrap().contact;
                     let ddepth = dcontact.depth;
@@ -279,7 +281,7 @@ impl Player {
                     // world.set_position(self.col_handle, self.shape_pos(None));
                     ()
                 },
-                None => { 
+                None => {
                     self.collision_ver = Direction::Null;
                     self.collision_hor = Direction::Null;
                     ()
@@ -308,9 +310,116 @@ impl Player {
     }
 }
 
+struct Guard {
+    pos: mint::Point2<f32>,
+    direction: Vector2<f32>,
+    room_start: mint::Point2<f32>,   // svaki strazar ce cuvati jednu prostoriju
+    room_end: mint::Point2<f32>,     // room_start i room_end su odgovarajuce koordinate sobe
+    run_left: Animation,             // po kojoj ce strazar patrolirati
+    run_right: Animation,
+    run_down: Animation,
+    run_up: Animation,
+    animation_state: Direction,
+    spd: f32,
+    next_point: mint::Point2<f32>,
+    patrol_points: Vec<mint::Point2<f32>>,
+    current_patrol: usize,
+}
+
+impl Guard {
+    pub fn new (ctx: &mut Context, coor_1: mint::Point2<f32>, coor_2: mint::Point2<f32> ) -> Self {
+    // konstruktoru saljemo tacke koje oznacavaju koordinate sobe
+        let mut patrol: Vec<mint::Point2<f32>> = Vec::new();
+        let mut rng = thread_rng();
+        for i in 0..4 {
+            patrol.push(mint::Point2 { x: rng.gen_range(coor_1.x, coor_2.x),
+                                       y: rng.gen_range(coor_1.y, coor_2.y) });
+        }
+        Guard {
+            pos: mint:: Point2 {x: patrol[0].x , y: patrol[0].y }, // pocetna tacka strazara je sredina sobe
+            direction: Vector2::new(0.0,0.0),
+            room_start: coor_1,
+            room_end: coor_2,
+            run_left: Animation::new(ctx, "/images/guard_runleft.png"),
+            run_right: Animation::new(ctx, "/images/guard_runright.png"),
+            run_down: Animation::new(ctx, "/images/guard_rundown.png"),
+            run_up: Animation::new(ctx, "/images/guard_runup.png"), // imena slika nisu prava
+            animation_state: Direction::Down,  // bilo kako
+            spd: 3.3,
+            next_point: mint:: Point2 {x: patrol[0].x , y: patrol[0].y },
+            patrol_points: patrol,
+            current_patrol: 0,
+        }
+    }
+    fn direction_maker ( &self, point_1: mint::Point2<f32>, point_2: mint::Point2<f32>) -> Vector2<f32> {
+        let dist_x = point_2.x - point_1.x;
+        let dist_y = point_2.y - point_1.y;
+        let norm = (dist_x * dist_x + dist_y * dist_y).sqrt();
+        Vector2::new(dist_x, dist_y).normalize()
+    }
+    fn next_rand_coor (&mut self) {
+        self.current_patrol = (self.current_patrol +1) % self.patrol_points.len();
+        self.next_point = self.patrol_points[self.current_patrol];
+    }
+    fn pos_from_move(&self) -> mint::Point2<f32> {  // kopirana funkcija iz Player
+        // ova f-ja se poziva pri svakom apdejtu
+        // na osnovu trenutne pozicije i pravca kretanja
+        // vraca "sledecu" poziciju igraca
+        let mut norm_dir = Vector2::new(0.0, 0.0);
+        if self.direction.x != 0.0 || self.direction.y != 0.0 {
+            norm_dir = self.direction.normalize();
+        }
+
+        mint::Point2 { x: self.pos.x + norm_dir.x * self.spd, y: self.pos.y + norm_dir.y * self.spd }
+    }
+    fn update (&mut self) {
+
+        if (self.pos.x.abs() - self.next_point.x.abs()).abs() > (self.spd + 0.2) &&
+           (self.pos.y.abs() - self.next_point.y.abs()).abs() > (self.spd + 0.2) {
+            self.pos = self.pos_from_move();
+        }
+        else {
+            self.next_rand_coor();
+            self.direction = self.direction_maker(self.pos, self.next_point);
+        }
+
+        if self.direction.x > 0.0  && ((self.direction.x).abs() - (self.direction.y).abs()) > 0.0 {
+            self.animation_state = Direction::Right;
+        }
+        else if self.direction.x < 0.0  && (self.direction.x.abs() - self.direction.y.abs()) > 0.0  {
+            self.animation_state = Direction::Left;
+        }
+        else if self.direction.y > 0.0  && (self.direction.x.abs() - self.direction.y.abs()) < 0.0 {
+            self.animation_state = Direction::Down;
+        }
+        else if self.direction.y < 0.0  && (self.direction.x.abs() - self.direction.y.abs()) < 0.0 {
+            self.animation_state = Direction::Up;
+        }
+        match self.animation_state {
+            Direction::Right => self.run_right.next_frame(),
+            Direction::Left => self.run_left.next_frame(),
+            Direction::Up => self.run_up.next_frame(),
+            Direction::Down => self.run_down.next_frame(),
+            Direction::Null => (),
+        }
+
+    }
+    fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+        match self.animation_state {
+            Direction::Right => self.run_right.draw(ctx, self.pos)?,
+            Direction::Left => self.run_left.draw(ctx, self.pos)?,
+            Direction::Up => self.run_up.draw(ctx, self.pos)?,
+            Direction::Down => self.run_down.draw(ctx, self.pos)?,
+            Direction::Null => (),
+        }
+        Ok(())
+    }
+}
+
 struct GameState {
     castle_map: map::Map,
     player: Player,
+    guard: Guard,
     world: CollisionWorld<f32, ()>,
     last_update: Instant,
 }
@@ -328,6 +437,7 @@ impl GameState {
         GameState {
             castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
             player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 74.0), 0.0), shape.clone(), groups, query, ()).handle()),
+            guard: Guard::new(ctx, mint::Point2{x: 1.0*32.0, y: 8.0*32.0}, mint::Point2{x: 10.0*32.0, y: 11.0*32.0}),
             world: world_mut,
             last_update: Instant::now(),
         }
@@ -340,6 +450,7 @@ impl event::EventHandler for GameState {
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
             self.player.update(ctx, &mut self.world, self.castle_map.map_handle);
             self.world.update();
+            self.guard.update();
             self.last_update = Instant::now();
         }
         Ok(())
@@ -349,6 +460,7 @@ impl event::EventHandler for GameState {
         graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into());
         self.castle_map.draw(ctx, 1, false)?;
         self.player.draw(ctx, false)?;
+        self.guard.draw(ctx)?;
         self.castle_map.draw(ctx, 2, false)?;
         graphics::present(ctx)?;
         timer::yield_now();
@@ -381,7 +493,7 @@ impl event::EventHandler for GameState {
             },
             _ => (),
         }
-    } 
+    }
     fn key_up_event(
         &mut self,
         _ctx: &mut Context,
@@ -407,4 +519,3 @@ fn main() -> GameResult {
     let state = &mut GameState::new(ctx);
     event::run(ctx, events_loop, state)
 }
-
