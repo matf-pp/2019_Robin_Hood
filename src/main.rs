@@ -8,9 +8,11 @@ mod map;
 use std::path::Path;
 use std::f32::consts::PI;
 use ggez::*;
-use na::{Vector2, Isometry2, Rotation2};
-use ncollide2d::shape::{Cuboid, ShapeHandle};
+use ggez::graphics::Drawable;
+use na::{Vector2, Isometry2, Rotation2, Point2};
+use ncollide2d::shape::{Cuboid, ShapeHandle, Compound};
 use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
+use ncollide2d::query::{Ray, RayCast};
 use rand::{thread_rng, Rng};
 
 use std::time::{Duration, Instant};
@@ -35,7 +37,7 @@ struct Animation {
 }
 
 impl Animation {
-    pub fn new<P>(ctx: &mut Context, filename: P) -> Self    // sta animacija prima kao argument
+    pub fn new<P>(ctx: &mut Context, filename: P) -> Self
         where
         P: AsRef<Path>,
         {
@@ -91,6 +93,7 @@ struct Player {
     animation_state: Direction,
     spd: f32,
     col_handle: CollisionObjectHandle,
+    visibility: Vec<mint::Point2<f32>>,
 }
 
 impl Player {
@@ -109,6 +112,7 @@ impl Player {
             animation_state: Direction::Null,
             spd: 4.0,
             col_handle: handle,
+            visibility: Vec::new(),
 
         }
     }
@@ -133,7 +137,7 @@ impl Player {
         }
     }
 
-    fn update(&mut self, ctx: &mut Context, world: &mut CollisionWorld<f32, ()>, map_handle: CollisionObjectHandle) {
+    fn update(&mut self, ctx: &mut Context, world: &mut CollisionWorld<f32, ()>, map_handle: CollisionObjectHandle, corners: &mut Vec<mint::Point2<f32>>) {
         /* self.walking je korisno za animaciju
          * npr. if self.walking {
          *          curr_animation = walk_animation;
@@ -141,6 +145,20 @@ impl Player {
          *          curr_animation = idle_animation;
          *      }
          */
+        self.visibility.clear();
+        // corners.sort_by(|a, b| Rotation2::rotation_between(&Vector2::x(), &Vector2::new(a.x, a.y)).angle().partial_cmp(&Rotation2::rotation_between(&Vector2::x(), &Vector2::new(b.x, b.y)).angle()).unwrap());
+
+        let origin_point = mint::Point2 { x: self.pos.x+5.0, y: self.pos.y+4.0 };
+        for corner in corners.iter() {
+            let ray = Ray::new(Point2::new(origin_point.x, origin_point.y), Vector2::new(corner.x-origin_point.x, corner.y-origin_point.y).normalize());
+            let map_shape: &Compound<f32> = world.collision_object(map_handle).unwrap().shape().as_shape().unwrap();
+            let intersect = (*map_shape).toi_with_ray(&Isometry2::identity(), &ray, true).unwrap();
+            let ipoint = ray.point_at(intersect);
+            self.visibility.push(mint::Point2 { x: ipoint.x, y: ipoint.y });
+        }
+        self.visibility.sort_by(|a, b| Rotation2::rotation_between(&Vector2::x(), &Vector2::new(origin_point.x - a.x, origin_point.y - a.y)).angle().partial_cmp(&Rotation2::rotation_between(&Vector2::x(), &Vector2::new(origin_point.x - b.x, origin_point.y - b.y)).angle()).unwrap());
+
+
         if self.direction.x == 0.0 && self.direction.y == 0.0 {
             self.walking = false;
             self.animation_state = Direction::Null;
@@ -295,6 +313,30 @@ impl Player {
         }
     }
 
+    fn draw_visibility(&self, ctx: &mut Context) -> GameResult<()> {
+        if self.visibility.len() > 0 && self.visibility[0] != self.visibility[1] {
+            let vis_clone = self.visibility.clone();
+
+            /*
+            let origin_point = mint::Point2 { x: self.pos.x+16.0, y: self.pos.y+13.0 };
+            let mut vis_mesh_builder = graphics::MeshBuilder::new();
+            for i in 0..(vis_clone.len()-2) {
+                vis_mesh_builder.triangles(&[origin_point, vis_clone[i], vis_clone[i+1]], [0.0, 1.0, 0.0, 0.5].into())?;
+            }
+            vis_mesh_builder.triangles(&[origin_point, vis_clone[0], vis_clone[vis_clone.len()-1]], [0.0, 1.0, 0.0, 0.5].into())?;
+            */
+
+            let mut vis_mesh_test: graphics::Mesh = graphics::Mesh::new_polygon(ctx, graphics::DrawMode::fill(), &vis_clone, [0.0, 1.0, 0.0, 0.5].into())?;
+            let mut whole_screen: graphics::Mesh = graphics::Mesh::new_rectangle(ctx, graphics::DrawMode::fill(), [0.0, 0.0, SCREEN_SIZE.0, SCREEN_SIZE.1].into(), [0.0, 0.0, 0.0, 1.0].into())?;
+            // whole_screen.set_blend_mode(Some(graphics::BlendMode::Subtract));
+            // vis_mesh_test.set_blend_mode(Some(graphics::BlendMode::Invert));
+            // let vis_mesh = vis_mesh_builder.build(ctx)?;
+            // graphics::draw(ctx, &whole_screen, graphics::DrawParam::new())?;
+            graphics::draw(ctx, &vis_mesh_test, graphics::DrawParam::new())?;
+        }
+        Ok(())
+    }
+
     fn draw(&self, ctx: &mut Context, show_mesh: bool) -> GameResult<()> {
         match self.animation_state {
             Direction::Right => self.run_right.draw(ctx, self.pos)?,
@@ -329,11 +371,11 @@ struct Guard {
 }
 
 impl Guard {
-    pub fn new (ctx: &mut Context, coor_1: mint::Point2<f32>, coor_2: mint::Point2<f32> ) -> Self {
+    pub fn new(ctx: &mut Context, coor_1: mint::Point2<f32>, coor_2: mint::Point2<f32>, patrol_point_count: i32) -> Self {
         // konstruktoru saljemo tacke koje oznacavaju koordinate sobe
         let mut patrol: Vec<mint::Point2<f32>> = Vec::new();
         let mut rng = thread_rng();
-        for i in 0..4 {
+        for i in 0..patrol_point_count {
             patrol.push(mint::Point2 { x: rng.gen_range(coor_1.x, coor_2.x),
             y: rng.gen_range(coor_1.y, coor_2.y) });
         }
@@ -345,19 +387,18 @@ impl Guard {
             run_right: Animation::new(ctx, "/images/guard_runright.png"),
             run_down: Animation::new(ctx, "/images/guard_rundown.png"),
             run_up: Animation::new(ctx, "/images/guard_runup.png"), 
-            animation_state: Direction::Down,  // bilo kako
+            animation_state: Direction::Down,
             spd: 3.3,
-            turn_spd: 6.0,
+            turn_spd: 8.0,
             rotation: Rotation2::new(0.0),
             next_point: mint:: Point2 {x: patrol[0].x , y: patrol[0].y },
             patrol_points: patrol,
             current_patrol: 0,
         }
     }
-    fn direction_maker ( &self, point_1: mint::Point2<f32>, point_2: mint::Point2<f32>) -> Vector2<f32> {
+    fn direction_maker(&self, point_1: mint::Point2<f32>, point_2: mint::Point2<f32>) -> Vector2<f32> {
         let dist_x = point_2.x - point_1.x;
         let dist_y = point_2.y - point_1.y;
-        let norm = (dist_x * dist_x + dist_y * dist_y).sqrt();
         Vector2::new(dist_x, dist_y).normalize()
     }
     fn next_rand_coor (&mut self) {
@@ -375,7 +416,7 @@ impl Guard {
 
         mint::Point2 { x: self.pos.x + norm_dir.x * self.spd, y: self.pos.y + norm_dir.y * self.spd }
     }
-    fn update (&mut self, ctx: &mut Context) {
+    fn update(&mut self) {
         if (self.pos.x.abs() - self.next_point.x.abs()).abs() > (self.spd + 0.2) &&
             (self.pos.y.abs() - self.next_point.y.abs()).abs() > (self.spd + 0.2) {
                 if self.final_direction.relative_eq(&self.direction, 0.00006, 0.0006) == false {
@@ -451,7 +492,7 @@ impl GameState {
         GameState {
             castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
             player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 74.0), 0.0), shape.clone(), groups, query, ()).handle()),
-            guard: Guard::new(ctx, mint::Point2{x: 1.0*32.0, y: 8.0*32.0}, mint::Point2{x: 10.0*32.0, y: 11.0*32.0}),
+            guard: Guard::new(ctx, mint::Point2{x: 1.0*32.0, y: 8.0*32.0}, mint::Point2{x: 10.0*32.0, y: 11.0*32.0}, 4),
             world: world_mut,
             last_update: Instant::now(),
         }
@@ -462,9 +503,9 @@ impl event::EventHandler for GameState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
-            self.player.update(ctx, &mut self.world, self.castle_map.map_handle);
+            self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
             self.world.update();
-            self.guard.update(ctx);
+            self.guard.update();
             self.last_update = Instant::now();
         }
         Ok(())
@@ -476,6 +517,7 @@ impl event::EventHandler for GameState {
         self.player.draw(ctx, false)?;
         self.guard.draw(ctx)?;
         self.castle_map.draw(ctx, 2, false)?;
+        // self.player.draw_visibility(ctx)?;
         graphics::present(ctx)?;
         timer::yield_now();
         Ok(())
