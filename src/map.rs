@@ -5,6 +5,8 @@ use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, Compound, ShapeHandle};
 use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
 
+crate::guard::Guard;
+
 
 #[derive(Debug, Clone)]
 pub enum TileType {
@@ -54,6 +56,7 @@ pub struct Map {
     map_tile_size: mint::Point2<f32>,
     map_corners: Vec<mint::Point2<f32>>,
     map_matrix: Vec<Vec<Tile>>,
+    map_guards: Vec<Guard>,
     map_spritebatch: graphics::spritebatch::SpriteBatch,
     pub map_handle: CollisionObjectHandle,
 }
@@ -94,7 +97,8 @@ impl Map {
             let mut compound_shape_vec: Vec<(Isometry2<f32>, ShapeHandle<f32>)> = Vec::new(); 
             let mut corner_points: Vec<mint::Point2<f32>> = Vec::new();
 
-            while let Some(line) = map_lines.next() {
+            while curr_y < map_heigth-1.0 {
+                let line = map_lines.next().unwrap();
                 for c in line.chars() {
                     match c {
                         // treba pratiti x i y poziciju svakog polja, i na osnovu karaktera sa te
@@ -102,8 +106,8 @@ impl Map {
                         '1' => {
                             corner_points.push(mint::Point2 { x: curr_x+12.0/32.0, y: curr_y+12.0/32.0});
                             curr_row_vec.push(Tile::new(TileType::Wall([0.0, 0.0, tfrac.x, tfrac.y].into(), 2),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         '2' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x, 0.0, tfrac.x, tfrac.y].into(), 1),
                                                            mint::Point2 { x:curr_x, y:curr_y },
@@ -111,20 +115,20 @@ impl Map {
                         '3' => {
                             corner_points.push(mint::Point2 { x: curr_x+20.0/32.0, y: curr_y+12.0/32.0 });
                             curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*2.0, 0.0, tfrac.x, tfrac.y].into(), 2),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         '4' => {
                             corner_points.push(mint::Point2 { x: curr_x+1.0, y: curr_y+12.0/32.0 });
                             curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*3.0, 0.0, tfrac.x, tfrac.y].into(), 1),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         '5' => {
                             corner_points.push(mint::Point2 { x: curr_x, y: curr_y+12.0/32.0 });
                             curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*4.0, 0.0, tfrac.x, tfrac.y].into(), 1),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         '6' => curr_row_vec.push(Tile::new(TileType::Wall([0.0, tfrac.y*1.0, tfrac.x, tfrac.y].into(), 1),
                                                            mint::Point2 { x:curr_x, y:curr_y },
@@ -138,20 +142,20 @@ impl Map {
                         '9' => {
                             corner_points.push(mint::Point2 { x: curr_x+1.0, y: curr_y });
                             curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*3.0, tfrac.y, tfrac.x, tfrac.y].into(), 1),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         'A' => {
                             corner_points.push(mint::Point2 { x: curr_x, y: curr_y });
                             curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*4.0, tfrac.y, tfrac.x, tfrac.y].into(), 1),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         'B' => {
                             corner_points.push(mint::Point2 { x: curr_x+12.0/32.0, y: curr_y });
                             curr_row_vec.push(Tile::new(TileType::Wall([0.0, tfrac.y*2.0, tfrac.x, tfrac.y].into(), 1),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         'C' => curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x, tfrac.y*2.0, tfrac.x, tfrac.y].into(), 2),
                                                            mint::Point2 { x:curr_x, y:curr_y },
@@ -159,8 +163,8 @@ impl Map {
                         'D' => {
                             corner_points.push(mint::Point2 { x: curr_x+20.0/32.0, y: curr_y });
                             curr_row_vec.push(Tile::new(TileType::Wall([tfrac.x*2.0, tfrac.y*2.0, tfrac.x, tfrac.y].into(), 1),
-                                                           mint::Point2 { x:curr_x, y:curr_y },
-                                                           tile_size))
+                                                        mint::Point2 { x:curr_x, y:curr_y },
+                                                        tile_size))
                         },
                         ' ' => curr_row_vec.push(Tile::new(TileType::Floor([tfrac.x*3.0, tfrac.y*2.0, tfrac.x, tfrac.y].into(), 1),
                                                            mint::Point2 { x:curr_x, y:curr_y },
@@ -185,6 +189,7 @@ impl Map {
                 curr_x = 0.0;
                 curr_y += 1.0;
             }
+            // let guard_line: Vec<&str> = map_lines.next().unwrap().split(' ').collect();
 
             Ok(Map {
                 map_size: mint::Point2 { x: map_width, y: map_heigth }, // ovo je broj polja na mapi
@@ -199,7 +204,7 @@ impl Map {
 
     pub fn get_corners(&mut self) -> Vec<mint::Point2<f32>> {
         self.map_corners.clone().into_iter().map(|c| mint::Point2 { x: self.map_start.x + c.x*self.map_tile_size.x,
-                                                            y: self.map_start.y + c.y*self.map_tile_size.y }).collect()
+            y: self.map_start.y + c.y*self.map_tile_size.y }).collect()
     }
 
     pub fn draw(&mut self, ctx: &mut Context, layer: i32, show_mesh: bool) -> GameResult<()> {
