@@ -11,6 +11,7 @@ mod score;
 
 use ggez::*;
 use ggez::graphics::Drawable;
+use ggez::audio::SoundSource;
 use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, ShapeHandle};
 use ncollide2d::world::{CollisionGroups, CollisionWorld, GeometricQueryType};
@@ -35,10 +36,11 @@ struct GameState {
     guard: Guard,
     world: CollisionWorld<f32, ()>,
     last_update: Instant,
+    song: audio::Source,
 }
 
 impl GameState {
-    pub fn new(ctx: &mut Context) -> Self {
+    pub fn new(ctx: &mut Context) -> GameResult<Self> {
         let mut world_mut = CollisionWorld::new(0.02);
         let shape = ShapeHandle::new(Cuboid::new(Vector2::new(12.0, 8.0)));
         let mut groups = CollisionGroups::new();
@@ -46,14 +48,17 @@ impl GameState {
         groups.set_blacklist(&[0 as usize]);
         groups.set_whitelist(&[1 as usize]);
         let query = GeometricQueryType::Contacts(0.0, 0.0);
+        let celtic_song = audio::Source::new(ctx, "/music/a_celtic_lore.mp3")?;
+        
 
-        GameState {
+        Ok(GameState {
             castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
             player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 74.0), 0.0), shape.clone(), groups, query, ()).handle()),
             guard: Guard::new(ctx, mint::Point2{x: 1.0*32.0, y: 8.0*32.0}, mint::Point2{x: 10.0*32.0, y: 11.0*32.0}, 4),
             world: world_mut,
             last_update: Instant::now(),
-        }
+            song: celtic_song,
+        })
     }
 }
 
@@ -61,6 +66,9 @@ impl event::EventHandler for GameState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
+            if !self.song.playing() {
+                self.song.play();
+            }
             self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
             self.world.update();
             self.guard.update();
@@ -131,6 +139,6 @@ fn main() -> GameResult {
         .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
         .build()?;
 
-    let state = &mut GameState::new(ctx);
+    let state = &mut GameState::new(ctx)?;
     event::run(ctx, events_loop, state)
 }
