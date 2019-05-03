@@ -232,9 +232,17 @@ impl Map {
 
     pub fn draw_guards(&mut self, ctx: &mut Context) -> GameResult<()> {
         for guard in self.map_guards.iter() {
-            guard.draw(ctx);
+            guard.draw(ctx)?;
         }
         Ok(())
+    }
+
+    pub fn draw_guard_vision(&mut self, ctx: &mut Context) -> GameResult<()> {
+        for guard in self.map_guards.iter() {
+            guard.draw_vision(ctx)?;
+        }
+        Ok(())
+
     }
 
     pub fn draw(&mut self, ctx: &mut Context, layer: i32, show_mesh: bool) -> GameResult<()> {

@@ -106,13 +106,18 @@ impl Guard {
 
 
     }
-    pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+    pub fn draw_vision(&self, ctx: &mut Context) -> GameResult<()> {
         let vec1 = Isometry2::new(Vector2::new(0.0,0.0), PI/6.0).transform_vector(&self.direction)*64.0;
         let vec2 = Isometry2::new(Vector2::new(0.0,0.0), -PI/6.0).transform_vector(&self.direction)*64.0;
         let origin_point = mint::Point2 {x: self.pos.x+16.0, y: self.pos.y +13.0};
         let vision = graphics::Mesh::from_triangles(ctx, &[origin_point, mint::Point2 {x: origin_point.x + vec1.x, y: origin_point.y + vec1.y},
                                                     mint::Point2{x: origin_point.x + vec2.x, y: origin_point.y + vec2.y}], [1.0, 0.0, 0.0, 0.5].into())?;
         graphics::draw(ctx, &vision, graphics::DrawParam::new())?;
+        Ok(())
+
+    }
+
+    pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
         match self.animation_state {
             Direction::Right => self.run_right.draw(ctx, self.pos)?,
             Direction::Left => self.run_left.draw(ctx, self.pos)?,

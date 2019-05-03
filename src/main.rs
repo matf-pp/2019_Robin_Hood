@@ -65,7 +65,7 @@ impl event::EventHandler for GameState {
         // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
             if !self.song.playing() {
-                self.song.play();
+                self.song.play()?;
             }
             self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
             self.world.update();
@@ -81,6 +81,7 @@ impl event::EventHandler for GameState {
         self.player.draw(ctx, false)?;
         self.castle_map.draw_guards(ctx)?;
         self.castle_map.draw(ctx, 2, false)?;
+        self.castle_map.draw_guard_vision(ctx)?;
         self.player.draw_score(ctx)?;
         // self.player.draw_visibility(ctx)?;
         graphics::present(ctx)?;
