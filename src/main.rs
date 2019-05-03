@@ -18,7 +18,6 @@ use ncollide2d::world::{CollisionGroups, CollisionWorld, GeometricQueryType};
 
 use crate::score::Score;
 use crate::anim::Direction;
-use crate::guard::Guard;
 use crate::player::Player;
 
 use std::time::{Duration, Instant};
@@ -28,13 +27,13 @@ const SCREEN_SIZE: (f32, f32) = (
     );
 
 const UPDATES_PER_SECOND: f32 = 30.0;
-const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
+const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64; // vreme koje treba da prodje izmedju dva updatea
 
-struct GameState {
+struct GameState { // glavno stanje cele igre
     castle_map: map::Map,
     player: Player,
     world: CollisionWorld<f32, ()>,
-    last_update: Instant,
+    last_update: Instant, // vreme kad se desio poslednji update
     song: audio::Source,
 }
 
@@ -134,7 +133,7 @@ impl event::EventHandler for GameState {
     }
 }
 
-fn main() -> GameResult {
+fn main() -> GameResult { //
     let (ctx, events_loop) = &mut ContextBuilder::new("robin_hood", "lkh01")
         .window_setup(conf::WindowSetup::default().title("Robin Hood"))
         .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
