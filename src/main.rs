@@ -33,7 +33,6 @@ const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
 struct GameState {
     castle_map: map::Map,
     player: Player,
-    guard: Guard,
     world: CollisionWorld<f32, ()>,
     last_update: Instant,
     song: audio::Source,
@@ -54,7 +53,6 @@ impl GameState {
         Ok(GameState {
             castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
             player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 74.0), 0.0), shape.clone(), groups, query, ()).handle()),
-            guard: Guard::new(ctx, mint::Point2{x: 1.0*32.0, y: 8.0*32.0}, mint::Point2{x: 10.0*32.0, y: 11.0*32.0}, 4),
             world: world_mut,
             last_update: Instant::now(),
             song: celtic_song,
@@ -71,7 +69,7 @@ impl event::EventHandler for GameState {
             }
             self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
             self.world.update();
-            self.guard.update();
+            self.castle_map.update_guards();
             self.last_update = Instant::now();
         }
         Ok(())
@@ -81,7 +79,7 @@ impl event::EventHandler for GameState {
         graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into());
         self.castle_map.draw(ctx, 1, false)?;
         self.player.draw(ctx, false)?;
-        self.guard.draw(ctx)?;
+        self.castle_map.draw_guards(ctx)?;
         self.castle_map.draw(ctx, 2, false)?;
         self.player.draw_score(ctx)?;
         // self.player.draw_visibility(ctx)?;

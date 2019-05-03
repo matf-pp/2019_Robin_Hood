@@ -28,7 +28,7 @@ impl Guard {
         // konstruktoru saljemo tacke koje oznacavaju koordinate sobe
         let mut patrol: Vec<mint::Point2<f32>> = Vec::new();
         let mut rng = thread_rng();
-        for i in 0..patrol_point_count {
+        for _i in 0..patrol_point_count {
             patrol.push(mint::Point2 { x: rng.gen_range(coor_1.x, coor_2.x),
             y: rng.gen_range(coor_1.y, coor_2.y) });
         }

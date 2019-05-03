@@ -58,6 +58,7 @@ pub struct Map {
     map_matrix: Vec<Vec<Tile>>,
     map_spritebatch: graphics::spritebatch::SpriteBatch,
     pub map_handle: CollisionObjectHandle,
+    map_guards: Vec<Guard>,
 }
 
 impl Map {
@@ -188,7 +189,23 @@ impl Map {
                 curr_x = 0.0;
                 curr_y += 1.0;
             }
-            // let guard_line: Vec<&str> = map_lines.next().unwrap().split(' ').collect();
+            let mut guards_vec: Vec<Guard> = Vec::new();
+            while let Some(guard_line) = map_lines.next() {
+                let split_space: Vec<&str> = guard_line.split(' ').collect();
+                let point1_vec: Vec<&str> = split_space[0].split(',').collect();
+                let point1_x: f32 = point1_vec[0].parse().unwrap();
+                let point1_y: f32 = point1_vec[1].parse().unwrap();
+                let point1: mint::Point2<f32> = mint::Point2 { x: point1_x*tile_size.x, y: point1_y*tile_size.y };
+                let point2_vec: Vec<&str> = split_space[1].split(',').collect();
+                let point2_x: f32 = point2_vec[0].parse().unwrap();
+                let point2_y: f32 = point2_vec[1].parse().unwrap();
+                let point2: mint::Point2<f32> = mint::Point2 { x: point2_x*tile_size.x, y: point2_y*tile_size.y };
+                let number_of_guards: i32 = split_space[2].parse().unwrap();
+                let number_of_points: i32 = split_space[3].parse().unwrap();
+                for _i in 0..number_of_guards {
+                    guards_vec.push(Guard::new(ctx, point1, point2, number_of_points));
+                }
+            }
 
             Ok(Map {
                 map_size: mint::Point2 { x: map_width, y: map_heigth }, // ovo je broj polja na mapi
@@ -198,12 +215,26 @@ impl Map {
                 map_matrix: matrix,
                 map_spritebatch: graphics::spritebatch::SpriteBatch::new(spritesheet),
                 map_handle: world_mut.add(Isometry2::new(Vector2::new(startpos.x, startpos.y), 0.0), ShapeHandle::new(Compound::new(compound_shape_vec)), col_groups, query, ()).handle(),
+                map_guards: guards_vec,
             })
         }
+
+    pub fn update_guards(&mut self) {
+        for i in 0..self.map_guards.len() {
+            self.map_guards[i].update();
+        }
+    }
 
     pub fn get_corners(&mut self) -> Vec<mint::Point2<f32>> {
         self.map_corners.clone().into_iter().map(|c| mint::Point2 { x: self.map_start.x + c.x*self.map_tile_size.x,
             y: self.map_start.y + c.y*self.map_tile_size.y }).collect()
+    }
+
+    pub fn draw_guards(&mut self, ctx: &mut Context) -> GameResult<()> {
+        for guard in self.map_guards.iter() {
+            guard.draw(ctx);
+        }
+        Ok(())
     }
 
     pub fn draw(&mut self, ctx: &mut Context, layer: i32, show_mesh: bool) -> GameResult<()> {
