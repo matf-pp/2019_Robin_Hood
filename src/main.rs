@@ -15,6 +15,7 @@ use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, ShapeHandle};
 use ncollide2d::world::{CollisionGroups, CollisionWorld, GeometricQueryType};
 
+use crate::score::Score;
 use crate::anim::Direction;
 use crate::guard::Guard;
 use crate::player::Player;
@@ -74,6 +75,7 @@ impl event::EventHandler for GameState {
         self.player.draw(ctx, false)?;
         self.guard.draw(ctx)?;
         self.castle_map.draw(ctx, 2, false)?;
+        self.player.draw_score(ctx)?;
         // self.player.draw_visibility(ctx)?;
         graphics::present(ctx)?;
         timer::yield_now();

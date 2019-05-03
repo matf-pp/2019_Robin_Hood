@@ -1,6 +1,8 @@
+use ggez::*;
+
 pub trait Score {
     fn increase (&mut self) -> ();    // da povecavamo score
-    fn draw_score (&self) -> ();  // da ispise score na ekran
+    fn draw_score (&self, ctx: &mut Context)-> GameResult<()>;  // da ispise score na ekran
 
 }
 
