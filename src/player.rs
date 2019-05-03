@@ -6,6 +6,7 @@ use na::{Vector2, Isometry2, Rotation2, Point2};
 
 
 use crate::anim::{Animation, Direction};
+use crate::score::Score;
 
 #[derive(Debug)]
 pub struct Player {
@@ -23,6 +24,7 @@ pub struct Player {
     spd: f32,
     col_handle: CollisionObjectHandle,
     visibility: Vec<mint::Point2<f32>>,
+    score: i32,
 }
 
 impl Player {
@@ -42,6 +44,7 @@ impl Player {
             spd: 4.0,
             col_handle: handle,
             visibility: Vec::new(),
+            score: 0,
 
         }
     }
@@ -272,3 +275,14 @@ impl Player {
         Ok(())
     }
 }
+
+impl Score for Player {
+    fn increase (&mut self) {
+        self.score = self.score + 100;
+    }
+    fn draw_score (&self, ctx: &mut Context) {
+
+    }
+}
+// zlato razlicite velicine nosi razlicit Score
+// mozemo uz score da ispisemo nivo na ekranu

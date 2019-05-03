@@ -5,7 +5,7 @@ use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, Compound, ShapeHandle};
 use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
 
-crate::guard::Guard;
+use crate::guard::Guard;
 
 
 #[derive(Debug, Clone)]
@@ -56,7 +56,6 @@ pub struct Map {
     map_tile_size: mint::Point2<f32>,
     map_corners: Vec<mint::Point2<f32>>,
     map_matrix: Vec<Vec<Tile>>,
-    map_guards: Vec<Guard>,
     map_spritebatch: graphics::spritebatch::SpriteBatch,
     pub map_handle: CollisionObjectHandle,
 }

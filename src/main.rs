@@ -7,6 +7,7 @@ mod map;
 mod guard;
 mod anim;
 mod player;
+mod score;
 
 use ggez::*;
 use ggez::graphics::Drawable;
