@@ -22,7 +22,7 @@ pub struct Player {
     idle: graphics::Image,
     pub animation_state: Direction,
     spd: f32,
-    col_handle: CollisionObjectHandle,
+    pub col_handle: CollisionObjectHandle,
     visibility: Vec<mint::Point2<f32>>,
     score: i32,
 }
@@ -277,8 +277,8 @@ impl Player {
 }
 
 impl Score for Player {
-    fn increase (&mut self) {
-        self.score = self.score + 100;
+    fn increase (&mut self, coin: i32) {
+        self.score = self.score + coin;
     }
     fn draw_score (&self, ctx: &mut Context ) -> GameResult<()> {
         let high_score = format!("Level 1     Gold collected: {}", self.score);

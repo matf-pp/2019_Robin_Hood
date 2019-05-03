@@ -48,7 +48,7 @@ impl GameState {
         groups.set_whitelist(&[1 as usize]);
         let query = GeometricQueryType::Contacts(0.0, 0.0);
         let celtic_song = audio::Source::new(ctx, "/music/a_celtic_lore.mp3")?;
-        
+
 
         Ok(GameState {
             castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
@@ -70,22 +70,24 @@ impl event::EventHandler for GameState {
             self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
             self.world.update();
             self.castle_map.update_guards();
+            self.player.increase(self.castle_map.update_gold(&mut self.world, self.player.col_handle));
             self.last_update = Instant::now();
         }
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into());
-        self.castle_map.draw(ctx, 1, false)?;
+    fn draw(&mut self, ctx: &mut Context) -> GameResult { // crta sve na mapu, bitan je redosled navodjenja pojedinacnih draw funkcija
+        graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into()); // brise prethodno stanje ekrana (posto se ono non stop updateuje)
+        self.castle_map.draw(ctx, 1, false)?; // crta prvi sloj mape (podovi, zidovi iza igraca)
+        self.castle_map.draw_gold(ctx)?; // prodje kroz ceo vektor i nacrta svaki element
         self.player.draw(ctx, false)?;
-        self.castle_map.draw_guards(ctx)?;
-        self.castle_map.draw(ctx, 2, false)?;
-        self.castle_map.draw_guard_vision(ctx)?;
+        self.castle_map.draw_guards(ctx)?; //
+        self.castle_map.draw(ctx, 2, false)?; // crta drugi sloj mape (donji zidovi)
+        self.castle_map.draw_guard_vision(ctx)?; // vidno polje strazara
         self.player.draw_score(ctx)?;
         // self.player.draw_visibility(ctx)?;
-        graphics::present(ctx)?;
-        timer::yield_now();
+        graphics::present(ctx)?; // konacno sve nacrta na ekran
+        timer::yield_now(); // ovo pisemo da bi crtanje sacekalo sledeci update
         Ok(())
     }
 

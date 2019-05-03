@@ -4,6 +4,7 @@ use ggez::*;
 use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, Compound, ShapeHandle};
 use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
+use rand::{thread_rng, Rng};
 
 use crate::guard::Guard;
 
@@ -28,8 +29,8 @@ impl Tile {
         let (tsrc, tlayer) = match ttype {
             TileType::Floor(d, l) => (graphics::DrawParam::new().src(d), l),
             TileType::Wall(d, l)  => (graphics::DrawParam::new().src(d), l),
-        }; // od tipa polja nece zavisiti samo slika, 
-        // vec i stvari kao sto su kolizija, osvetljenje itd.  
+        }; // od tipa polja nece zavisiti samo slika,
+        // vec i stvari kao sto su kolizija, osvetljenje itd.
         Tile {
             tile_type: ttype,
             tile_src: tsrc,
@@ -50,6 +51,49 @@ impl Tile {
     }
 }
 
+pub struct Gold {
+    pos: mint::Point2<f32>,
+    image: graphics::Image,
+    value: i32,
+    handle: CollisionObjectHandle,
+}
+impl Gold {
+    pub fn new (ctx: &mut Context, point1: mint::Point2<f32>, point2: mint::Point2<f32>, handle1: CollisionObjectHandle) -> Self {
+// handle ce nam kasnije pomoci da odredimo da li je igrac dodirnuo zlato (pokupio zlato)
+        let mut rng = thread_rng();
+        let num : i32 = rng.gen_range (1,4);
+
+
+        Gold {
+            pos: mint::Point2 { x: rng.gen_range(point1.x, point2.x),
+            y: rng.gen_range(point1.y, point2.y) },
+            image: graphics::Image::new(ctx, format!("/images/gold{}.png", num)).unwrap(),
+            value: match num {
+                1 => 5,
+                2 => 15,
+                3 => 50,
+                _ => 0,
+            },
+            handle: handle1,
+        }
+    }
+    pub fn update (&self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle) -> i32 {
+        world.set_position(self.handle, Isometry2::new(Vector2::new(self.pos.x, self.pos.y), 0.0));
+        match world.contact_pair(self.handle, player_handle, true) {
+            // contact_pair vraca uredjenu cetvorku koja opisuje da li se desio sudar
+            None => 0,
+            _ => {
+                world.remove(&[self.handle]); // remove brise iz CollisionWorld ali ne brise ceo objekat
+                self.value
+            },
+        }
+    }
+    pub fn draw (&self, ctx: &mut Context) -> GameResult<()> {
+        graphics::draw(ctx, &self.image, graphics::DrawParam::new().dest(self.pos))?;
+        Ok(())
+    }
+}
+
 pub struct Map {
     map_size: mint::Point2<f32>,
     map_start: mint::Point2<f32>,
@@ -59,11 +103,12 @@ pub struct Map {
     map_spritebatch: graphics::spritebatch::SpriteBatch,
     pub map_handle: CollisionObjectHandle,
     map_guards: Vec<Guard>,
+    map_gold: Vec<Gold>,
 }
 
 impl Map {
-    pub fn load<P>(ctx: &mut Context, level_filename: P, image_filename: P, startpos: mint::Point2<f32>, tile_size: mint::Point2<f32>, world_mut: &mut CollisionWorld<f32, ()>) -> GameResult<Self> 
-        where 
+    pub fn load<P>(ctx: &mut Context, level_filename: P, image_filename: P, startpos: mint::Point2<f32>, tile_size: mint::Point2<f32>, world_mut: &mut CollisionWorld<f32, ()>) -> GameResult<Self>
+        where
         P: AsRef<Path>,
         {
             let spritesheet = graphics::Image::new(ctx, image_filename)?;
@@ -75,7 +120,7 @@ impl Map {
             map_file.read_to_string(&mut map_string)?;
             let mut map_lines = map_string.lines();
 
-            // U prvoj liniji treba da bude 2 broja - 
+            // U prvoj liniji treba da bude 2 broja -
             // map_width map_heigth
             let first_line: Vec<&str> = map_lines.next().unwrap().split(' ').collect();
             let map_width: f32 = first_line[0].parse().unwrap();
@@ -89,12 +134,12 @@ impl Map {
 
             let shape_full = ShapeHandle::new(Cuboid::new(Vector2::new(16.0, 16.0)));
             let shape_quart = ShapeHandle::new(Cuboid::new(Vector2::new(16.0, 8.0)));
-            let query = GeometricQueryType::Contacts(0.0, 0.0);
+            let query = GeometricQueryType::Contacts(0.0, 0.0); // definisemo sta znaci dodir igraca i zlata i igraca i zida
             let mut col_groups = CollisionGroups::new();
-            col_groups.set_membership(&[1 as usize]);
-            col_groups.set_blacklist(&[1 as usize]);
-            col_groups.set_whitelist(&[0 as usize]);
-            let mut compound_shape_vec: Vec<(Isometry2<f32>, ShapeHandle<f32>)> = Vec::new(); 
+            col_groups.set_membership(&[1 as usize]); // kojim grupama pripada objekat
+            col_groups.set_blacklist(&[1 as usize]); // sa kojim grupama ne moze da interaguje objekat
+            col_groups.set_whitelist(&[0 as usize]); // sa kojim grupama objekat moze da interaguje
+            let mut compound_shape_vec: Vec<(Isometry2<f32>, ShapeHandle<f32>)> = Vec::new();
             let mut corner_points: Vec<mint::Point2<f32>> = Vec::new();
 
             while curr_y < map_heigth-1.0 {
@@ -190,21 +235,46 @@ impl Map {
                 curr_y += 1.0;
             }
             let mut guards_vec: Vec<Guard> = Vec::new();
+            let mut gold_vec: Vec<Gold> = Vec::new();
+
+            let shape_gold = ShapeHandle::new(Cuboid::new(Vector2::new(8.0, 8.0))); // "okvir" zlata, njegove granice da bismo mogli da definisemo "sudar" igraca i zlata
+
+
             while let Some(guard_line) = map_lines.next() {
+                // posle opisa mape u txt fajlu sledi nekoliko redova koji
+                // imaju informacije o koordinatama soba, broju strazara i broju
+                // novcica
                 let split_space: Vec<&str> = guard_line.split(' ').collect();
+
                 let point1_vec: Vec<&str> = split_space[0].split(',').collect();
                 let point1_x: f32 = point1_vec[0].parse().unwrap();
                 let point1_y: f32 = point1_vec[1].parse().unwrap();
+
                 let point1: mint::Point2<f32> = mint::Point2 { x: point1_x*tile_size.x, y: point1_y*tile_size.y };
+
                 let point2_vec: Vec<&str> = split_space[1].split(',').collect();
                 let point2_x: f32 = point2_vec[0].parse().unwrap();
                 let point2_y: f32 = point2_vec[1].parse().unwrap();
+
                 let point2: mint::Point2<f32> = mint::Point2 { x: point2_x*tile_size.x, y: point2_y*tile_size.y };
+
                 let number_of_guards: i32 = split_space[2].parse().unwrap();
                 let number_of_points: i32 = split_space[3].parse().unwrap();
+                let number_of_coins: i32 = split_space[4].parse().unwrap();
+
                 for _i in 0..number_of_guards {
                     guards_vec.push(Guard::new(ctx, point1, point2, number_of_points));
                 }
+
+                for _i in 0..number_of_coins { // pravimo vektor koji sadrzi svo zlato na mapi
+                    gold_vec.push(Gold::new(ctx, point1, point2,
+                        world_mut.add(Isometry2::new(Vector2::new(startpos.x, startpos.y), 0.0), // world_mut je neophodan zbog sudaranja igraca i zlata
+                         shape_gold.clone(),
+                         col_groups,
+                         query,
+                         ()).handle())); // do handle je poziv funkcije world_mut.add koja dodaje objekat u svet za koliziju (ne crta ga)
+                }
+
             }
 
             Ok(Map {
@@ -216,8 +286,31 @@ impl Map {
                 map_spritebatch: graphics::spritebatch::SpriteBatch::new(spritesheet),
                 map_handle: world_mut.add(Isometry2::new(Vector2::new(startpos.x, startpos.y), 0.0), ShapeHandle::new(Compound::new(compound_shape_vec)), col_groups, query, ()).handle(),
                 map_guards: guards_vec,
+                map_gold: gold_vec,
             })
         }
+
+    pub fn update_gold(&mut self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle) -> i32 {
+        // argumenti su isti kao za update pojedinacnog golda
+        let mut zbir: i32 = 0;
+        let mut duzina = self.map_gold.len();
+        let mut i: usize = 0;
+        while i < duzina {
+            let sudaren = self.map_gold[i].update(world, player_handle);
+            match sudaren { //vraca 0 ako se igrac nije sudario sa zlatom,i neku vrednost ako jeste
+                0 => (),
+                vrednost => {
+                    self.map_gold.remove(i); // brise i-ti gold iz vektora pa se taj gold vise nece updateovati i crtati
+                    zbir += vrednost;
+                    // ovaj zbir prosledjujemo igracu da bi pri svakom
+                    // updateu promenio score. Zato se zbiru dodeljuje nula pri svakom pozivu
+                }
+            }
+            duzina = self.map_gold.len(); // updateujemo zbog brisanja elemenata
+            i += 1;
+        }
+        zbir
+    }
 
     pub fn update_guards(&mut self) {
         for i in 0..self.map_guards.len() {
@@ -228,6 +321,14 @@ impl Map {
     pub fn get_corners(&mut self) -> Vec<mint::Point2<f32>> {
         self.map_corners.clone().into_iter().map(|c| mint::Point2 { x: self.map_start.x + c.x*self.map_tile_size.x,
             y: self.map_start.y + c.y*self.map_tile_size.y }).collect()
+    }
+
+    pub fn draw_gold(&mut self, ctx: &mut Context) -> GameResult<()> {
+        for gold in self.map_gold.iter() {
+            gold.draw(ctx)?;
+        }
+        Ok(())
+        // ova funkcija crta na ekran sve zlatnike tj pojedinacno poziva draw za svaki gold
     }
 
     pub fn draw_guards(&mut self, ctx: &mut Context) -> GameResult<()> {

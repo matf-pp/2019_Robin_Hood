@@ -33,13 +33,13 @@ impl Guard {
             y: rng.gen_range(coor_1.y, coor_2.y) });
         }
         Guard {
-            pos: mint:: Point2 {x: patrol[0].x , y: patrol[0].y }, 
+            pos: mint:: Point2 {x: patrol[0].x , y: patrol[0].y },
             direction: Vector2::new(0.0, 1.0),
             final_direction: Vector2::new(0.0, 0.0),
             run_left: Animation::new(ctx, "/images/guard_runleft.png"),
             run_right: Animation::new(ctx, "/images/guard_runright.png"),
             run_down: Animation::new(ctx, "/images/guard_rundown.png"),
-            run_up: Animation::new(ctx, "/images/guard_runup.png"), 
+            run_up: Animation::new(ctx, "/images/guard_runup.png"),
             animation_state: Direction::Down,
             spd: 3.3,
             turn_spd: 8.0,
