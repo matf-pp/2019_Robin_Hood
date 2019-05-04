@@ -1,8 +1,9 @@
 use std::io::Read;
+use std::f32::consts::PI;
 use std::path::Path;
 use ggez::*;
-use na::{Vector2, Isometry2};
-use ncollide2d::shape::{Cuboid, Compound, ShapeHandle};
+use na::{Vector2, Isometry2, Point2};
+use ncollide2d::shape::{Cuboid, Compound, ConvexPolygon, ShapeHandle};
 use ncollide2d::world::{CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType};
 use rand::{thread_rng, Rng};
 
@@ -240,6 +241,15 @@ impl Map {
             let shape_gold = ShapeHandle::new(Cuboid::new(Vector2::new(8.0, 8.0))); // "okvir" zlata, njegove granice da bismo mogli da definisemo "sudar" igraca i zlata
 
 
+            let first_dir = Vector2::new(0.0, 1.0);
+            let vec1 = Isometry2::new(Vector2::new(0.0,0.0), PI/6.0).transform_vector(&first_dir)*64.0;
+            let vec2 = Isometry2::new(Vector2::new(0.0,0.0), -PI/6.0).transform_vector(&first_dir)*64.0;
+            let origin_point = Point2::new(0.0, 0.0);
+            let triangle_points: [Point2<f32>; 3] = [origin_point, origin_point+vec1, origin_point+vec2]; 
+
+            let shape_triangle = ShapeHandle::new(ConvexPolygon::try_from_points(&triangle_points).unwrap());
+
+
             while let Some(guard_line) = map_lines.next() {
                 // posle opisa mape u txt fajlu sledi nekoliko redova koji
                 // imaju informacije o koordinatama soba, broju strazara i broju
@@ -263,7 +273,13 @@ impl Map {
                 let number_of_coins: i32 = split_space[4].parse().unwrap();
 
                 for _i in 0..number_of_guards {
-                    guards_vec.push(Guard::new(ctx, point1, point2, number_of_points));
+                    guards_vec.push(Guard::new(ctx, point1, point2, number_of_points,
+                        world_mut.add(Isometry2::new(Vector2::new(startpos.x, startpos.y), 0.0), // world_mut je neophodan zbog sudaranja igraca i zlata
+                         shape_triangle.clone(),
+                         col_groups,
+                         query,
+                         ()).handle())); // do handle je poziv funkcije world_mut.add koja dodaje objekat u svet za koliziju (ne crta ga)
+
                 }
 
                 for _i in 0..number_of_coins { // pravimo vektor koji sadrzi svo zlato na mapi
@@ -312,10 +328,12 @@ impl Map {
         zbir
     }
 
-    pub fn update_guards(&mut self) {
+    pub fn update_guards(&mut self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle) -> bool {
+        let mut res: bool = false;
         for i in 0..self.map_guards.len() {
-            self.map_guards[i].update();
+            res = res || self.map_guards[i].update(world, player_handle);
         }
+        res
     }
 
     pub fn get_corners(&mut self) -> Vec<mint::Point2<f32>> {

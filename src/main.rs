@@ -8,6 +8,7 @@ mod guard;
 mod anim;
 mod player;
 mod score;
+mod game_over;
 
 use ggez::*;
 use ggez::graphics::Drawable;
@@ -19,6 +20,7 @@ use ncollide2d::world::{CollisionGroups, CollisionWorld, GeometricQueryType};
 use crate::score::Score;
 use crate::anim::Direction;
 use crate::player::Player;
+use crate::game_over::GameOver;
 
 use std::time::{Duration, Instant};
 
@@ -35,6 +37,7 @@ struct GameState { // glavno stanje cele igre
     world: CollisionWorld<f32, ()>,
     last_update: Instant, // vreme kad se desio poslednji update
     song: audio::Source,
+    end: Option<GameOver>,
 }
 
 impl GameState {
@@ -55,6 +58,7 @@ impl GameState {
             world: world_mut,
             last_update: Instant::now(),
             song: celtic_song,
+            end: None,
         })
     }
 }
@@ -67,10 +71,20 @@ impl event::EventHandler for GameState {
                 self.song.set_repeat(true);
                 self.song.play()?;
             }
-            self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
-            self.world.update();
-            self.castle_map.update_guards();
-            self.player.increase(self.castle_map.update_gold(&mut self.world, self.player.col_handle));
+            match &mut self.end {
+                None => {
+                    if self.player.caught {
+                        self.end = Some(GameOver::new(ctx, self.player.score).unwrap());
+                    }
+                    self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
+                    self.world.update();
+                    self.player.caught = self.castle_map.update_guards(&mut self.world, self.player.col_handle);
+                    self.player.increase(self.castle_map.update_gold(&mut self.world, self.player.col_handle))?;
+                },
+                Some(g) => {
+                    g.update();
+                }
+            }
             self.last_update = Instant::now();
         }
         Ok(())
@@ -78,14 +92,22 @@ impl event::EventHandler for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult { // crta sve na mapu, bitan je redosled navodjenja pojedinacnih draw funkcija
         graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into()); // brise prethodno stanje ekrana (posto se ono non stop updateuje)
-        self.castle_map.draw(ctx, 1, false)?; // crta prvi sloj mape (podovi, zidovi iza igraca)
-        self.castle_map.draw_gold(ctx)?; // prodje kroz ceo vektor i nacrta svaki element
-        self.player.draw(ctx, false)?;
-        self.castle_map.draw_guards(ctx)?; //
-        self.castle_map.draw(ctx, 2, false)?; // crta drugi sloj mape (donji zidovi)
-        self.castle_map.draw_guard_vision(ctx)?; // vidno polje strazara
-        self.player.draw_score(ctx)?;
-        // self.player.draw_visibility(ctx)?;
+        match &self.end {
+            None => {
+                self.castle_map.draw(ctx, 1, false)?; // crta prvi sloj mape (podovi, zidovi iza igraca)
+                self.castle_map.draw_gold(ctx)?; // prodje kroz ceo vektor i nacrta svaki element
+                self.player.draw(ctx, false)?;
+                self.castle_map.draw_guards(ctx)?; //
+                self.castle_map.draw(ctx, 2, false)?; // crta drugi sloj mape (donji zidovi)
+                self.castle_map.draw_guard_vision(ctx)?; // vidno polje strazara
+                self.player.draw_score(ctx)?;
+                // self.player.draw_visibility(ctx)?;
+            },
+            Some(g) => {
+                g.draw(ctx)?;
+            }
+
+        } 
         graphics::present(ctx)?; // konacno sve nacrta na ekran
         timer::yield_now(); // ovo pisemo da bi crtanje sacekalo sledeci update
         Ok(())

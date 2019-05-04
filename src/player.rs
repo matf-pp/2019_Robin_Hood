@@ -24,8 +24,9 @@ pub struct Player {
     spd: f32,
     pub col_handle: CollisionObjectHandle,
     visibility: Vec<mint::Point2<f32>>,
-    score: i32,
+    pub score: i32,
     coin_sound: audio::Source,
+    pub caught: bool
 }
 
 impl Player {
@@ -47,6 +48,7 @@ impl Player {
             visibility: Vec::new(),
             score: 0,
             coin_sound: audio::Source::new(ctx, "/sounds/coins.wav").unwrap(),
+            caught: false,
         }
     }
 
