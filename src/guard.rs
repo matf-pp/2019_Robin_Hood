@@ -1,8 +1,7 @@
 use std::f32::consts::PI;
 use ggez::*;
-use na::{Vector2, Isometry2, Rotation2, Point2};
+use na::{Vector2, Isometry2, Rotation2};
 use ncollide2d::world::{CollisionObjectHandle, CollisionWorld};
-use ncollide2d::shape::{ConvexPolygon};
 use rand::{thread_rng, Rng};
 
 use crate::anim::{Animation, Direction};

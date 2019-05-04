@@ -22,7 +22,7 @@ impl GameOver {
         game_over_text.set_font(font_celtknot, graphics::Scale::uniform(40.0));
         high_score_text.set_font(font_celtknot, graphics::Scale::uniform(40.0));
         let mut stone_sound = audio::Source::new(ctx, "/sounds/stone.wav").unwrap();
-        stone_sound.play_detached();
+        stone_sound.play_detached()?;
 
         Ok(GameOver {
             text1_pos: mint::Point2 { x: 200.0, y: 542.0 },

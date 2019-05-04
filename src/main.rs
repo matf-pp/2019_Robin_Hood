@@ -11,7 +11,6 @@ mod score;
 mod game_over;
 
 use ggez::*;
-use ggez::graphics::Drawable;
 use ggez::audio::SoundSource;
 use na::{Vector2, Isometry2};
 use ncollide2d::shape::{Cuboid, ShapeHandle};
@@ -91,7 +90,7 @@ impl event::EventHandler for GameState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult { // crta sve na mapu, bitan je redosled navodjenja pojedinacnih draw funkcija
-        graphics::clear(ctx, [0.2, 0.2, 0.2, 1.0].into()); // brise prethodno stanje ekrana (posto se ono non stop updateuje)
+        graphics::clear(ctx, (18, 15, 17, 255).into()); // brise prethodno stanje ekrana (posto se ono non stop updateuje)
         match &self.end {
             None => {
                 self.castle_map.draw(ctx, 1, false)?; // crta prvi sloj mape (podovi, zidovi iza igraca)
