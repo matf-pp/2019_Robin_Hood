@@ -64,6 +64,7 @@ impl event::EventHandler for GameState {
         // da kontrolisemo broj apdejta u sekundi, ili FPS
         if Instant::now() - self.last_update >= Duration::from_millis(MILLIS_PER_UPDATE) {
             if !self.song.playing() {
+                self.song.set_repeat(true);
                 self.song.play()?;
             }
             self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());

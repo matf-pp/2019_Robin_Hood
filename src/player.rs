@@ -1,9 +1,9 @@
 use ggez::*;
+use ggez::audio::SoundSource;
 use ncollide2d::shape::{Compound};
 use ncollide2d::world::{CollisionObjectHandle, CollisionWorld};
 use ncollide2d::query::{Ray, RayCast};
 use na::{Vector2, Isometry2, Rotation2, Point2};
-
 
 use crate::anim::{Animation, Direction};
 use crate::score::Score;
@@ -25,6 +25,7 @@ pub struct Player {
     pub col_handle: CollisionObjectHandle,
     visibility: Vec<mint::Point2<f32>>,
     score: i32,
+    coin_sound: audio::Source,
 }
 
 impl Player {
@@ -45,7 +46,7 @@ impl Player {
             col_handle: handle,
             visibility: Vec::new(),
             score: 0,
-
+            coin_sound: audio::Source::new(ctx, "/sounds/coins.wav").unwrap(),
         }
     }
 
@@ -277,8 +278,12 @@ impl Player {
 }
 
 impl Score for Player {
-    fn increase (&mut self, coin: i32) {
+    fn increase (&mut self, coin: i32) -> GameResult<()> {
         self.score = self.score + coin;
+        if coin > 0 {
+            self.coin_sound.play_detached()?;
+        }
+        Ok(())
     }
     fn draw_score (&self, ctx: &mut Context ) -> GameResult<()> {
         let high_score = format!("Level 1     Gold collected: {}", self.score);

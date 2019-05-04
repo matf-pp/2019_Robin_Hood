@@ -1,7 +1,7 @@
 use ggez::*;
 
 pub trait Score {
-    fn increase (&mut self, coin: i32) -> ();    // da povecavamo score
+    fn increase (&mut self, coin: i32) -> GameResult<()>;    // da povecavamo score
     fn draw_score (&self, ctx: &mut Context)-> GameResult<()>;  // da ispise score na ekran
 }
 
