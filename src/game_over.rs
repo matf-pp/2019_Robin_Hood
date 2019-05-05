@@ -21,31 +21,31 @@ impl GameOver {
         let font_celtknot = graphics::Font::new(ctx, "/fonts/Celtknot.ttf").unwrap();
         game_over_text.set_font(font_celtknot, graphics::Scale::uniform(40.0));
         high_score_text.set_font(font_celtknot, graphics::Scale::uniform(40.0));
-        let mut stone_sound = audio::Source::new(ctx, "/sounds/stone.wav").unwrap();
+        let mut stone_sound = audio::Source::new(ctx, "/sounds/stone_short.mp3").unwrap();
         stone_sound.play_detached()?;
 
         Ok(GameOver {
-            text1_pos: mint::Point2 { x: 200.0, y: 542.0 },
-            text2_pos: mint::Point2 { x: 140.0, y: 592.0 },
+            text1_pos: mint::Point2 { x: 220.0, y: 542.0 },
+            text2_pos: mint::Point2 { x: 140.0, y: 642.0 },
             stone_pos: mint::Point2 { x: 40.0, y: 430.0 },
             text1: game_over_text,
             text2: high_score_text,
             stone: graphics::Image::new(ctx, "/images/user_interface.png").unwrap(),
-            final_text1_pos: mint::Point2 { x: 200.0, y: 152.0 },
-            final_text2_pos: mint::Point2 { x: 140.0, y: 202.0 },
+            final_text1_pos: mint::Point2 { x: 220.0, y: 152.0 },
+            final_text2_pos: mint::Point2 { x: 140.0, y: 252.0 },
             final_stone_pos: mint::Point2 { x: 40.0, y: 40.0 },
         })
     }
 
     pub fn update(&mut self) {
         if self.text1_pos != self.final_text1_pos {
-            self.text1_pos.y -= 1.0;
+            self.text1_pos.y -= 5.0;
         }
         if self.text2_pos != self.final_text2_pos {
-            self.text2_pos.y -= 1.0;
+            self.text2_pos.y -= 5.0;
         }
         if self.stone_pos != self.final_stone_pos {
-            self.stone_pos.y -= 1.0;
+            self.stone_pos.y -= 5.0;
         }
     }
 

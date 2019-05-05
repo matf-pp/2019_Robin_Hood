@@ -290,9 +290,9 @@ impl Score for Player {
     fn draw_score (&self, ctx: &mut Context ) -> GameResult<()> {
         let high_score = format!("Level 1     Gold collected: {}", self.score);
         let mut tekst = graphics::Text::new (high_score);
-        let font_stonecross = graphics::Font::new(ctx, "/fonts/MeathFLF.ttf")?;
+        let font_meath = graphics::Font::new(ctx, "/fonts/MeathFLF.ttf")?;
         let interface_stone = graphics::Image::new (ctx, "/images/user_interface.png")?;
-        tekst.set_font(font_stonecross, graphics::Scale::uniform(20.0));
+        tekst.set_font(font_meath, graphics::Scale::uniform(20.0));
         graphics::draw (ctx, &interface_stone, graphics::DrawParam::new().dest(mint::Point2{x: 40.0 , y: 432.0}))?;
         graphics::draw (ctx, &tekst, graphics::DrawParam::new().dest(mint::Point2{x: 200.0 , y: 455.0}))?;
         Ok(())
