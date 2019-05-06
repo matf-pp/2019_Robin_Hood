@@ -56,7 +56,7 @@ impl GameState {
 
 
         Ok(GameState {
-            castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:0.0, y:0.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
+            castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:100.0, y:100.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
             player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 74.0), 0.0), shape.clone(), groups, query, ()).handle()),
             world: world_mut,
             last_update: Instant::now(),
@@ -82,7 +82,8 @@ impl event::EventHandler for GameState {
                         if self.player.caught {
                             self.end = Some(GameOver::new(ctx, self.player.score).unwrap());
                         }
-                        self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
+                        let map_move = self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
+                        self.castle_map.update(&mut self.world, map_move);
                         self.world.update();
                         self.player.caught = self.castle_map.update_guards(&mut self.world, self.player.col_handle);
                         self.player.increase(self.castle_map.update_gold(&mut self.world, self.player.col_handle))?;

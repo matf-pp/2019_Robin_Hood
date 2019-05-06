@@ -78,7 +78,9 @@ impl Gold {
             handle: handle1,
         }
     }
-    pub fn update (&self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle) -> i32 {
+    pub fn update(&mut self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle, map_vel: Vector2<f32>) -> i32 {
+        self.pos.x += map_vel.x;
+        self.pos.y += map_vel.y;
         world.set_position(self.handle, Isometry2::new(Vector2::new(self.pos.x, self.pos.y), 0.0));
         match world.contact_pair(self.handle, player_handle, true) {
             // contact_pair vraca uredjenu cetvorku koja opisuje da li se desio sudar
@@ -98,6 +100,8 @@ impl Gold {
 pub struct Map {
     map_size: mint::Point2<f32>,
     map_start: mint::Point2<f32>,
+    map_vel: Vector2<f32>,
+    map_spd: f32,
     map_tile_size: mint::Point2<f32>,
     map_corners: Vec<mint::Point2<f32>>,
     map_matrix: Vec<Vec<Tile>>,
@@ -220,9 +224,9 @@ impl Map {
                     match curr_row_vec[curr_x as usize].tile_type {
                         TileType::Wall(_, l) => {
                             if l != 2 {
-                                compound_shape_vec.push((Isometry2::new(Vector2::new(startpos.x+curr_x*tile_size.x, startpos.y+curr_y*tile_size.y), 0.0), shape_full.clone()));
+                                compound_shape_vec.push((Isometry2::new(Vector2::new(curr_x*tile_size.x, curr_y*tile_size.y), 0.0), shape_full.clone()));
                             } else {
-                                compound_shape_vec.push((Isometry2::new(Vector2::new(startpos.x+curr_x*tile_size.x, startpos.y+curr_y*tile_size.y+16.0), 0.0), shape_quart.clone()));
+                                compound_shape_vec.push((Isometry2::new(Vector2::new(curr_x*tile_size.x, curr_y*tile_size.y+16.0), 0.0), shape_quart.clone()));
                             }
                             ()
                         },
@@ -260,13 +264,13 @@ impl Map {
                 let point1_x: f32 = point1_vec[0].parse().unwrap();
                 let point1_y: f32 = point1_vec[1].parse().unwrap();
 
-                let point1: mint::Point2<f32> = mint::Point2 { x: point1_x*tile_size.x, y: point1_y*tile_size.y };
+                let point1: mint::Point2<f32> = mint::Point2 { x: startpos.x + point1_x*tile_size.x, y: startpos.y + point1_y*tile_size.y };
 
                 let point2_vec: Vec<&str> = split_space[1].split(',').collect();
                 let point2_x: f32 = point2_vec[0].parse().unwrap();
                 let point2_y: f32 = point2_vec[1].parse().unwrap();
 
-                let point2: mint::Point2<f32> = mint::Point2 { x: point2_x*tile_size.x, y: point2_y*tile_size.y };
+                let point2: mint::Point2<f32> = mint::Point2 { x: startpos.x + point2_x*tile_size.x, y: startpos.y + point2_y*tile_size.y };
 
                 let number_of_guards: i32 = split_space[2].parse().unwrap();
                 let number_of_points: i32 = split_space[3].parse().unwrap();
@@ -296,6 +300,8 @@ impl Map {
             Ok(Map {
                 map_size: mint::Point2 { x: map_width, y: map_heigth }, // ovo je broj polja na mapi
                 map_start: startpos,
+                map_vel: Vector2::new(0.0, 0.0),
+                map_spd: 4.0,
                 map_tile_size: tile_size,
                 map_corners: corner_points,
                 map_matrix: matrix,
@@ -306,13 +312,25 @@ impl Map {
             })
         }
 
+    pub fn update(&mut self, world: &mut CollisionWorld<f32, ()>, dir: Vector2<f32>) {
+        let dir_norm = if dir.x != 0.0 || dir.y != 0.0 {
+            (-dir).normalize()
+        } else {
+            dir
+        };
+        self.map_vel = dir_norm*self.map_spd;
+        self.map_start.x += self.map_vel.x;
+        self.map_start.y += self.map_vel.y;
+        world.set_position(self.map_handle, Isometry2::new(Vector2::new(self.map_start.x, self.map_start.y), 0.0));
+    }
+
     pub fn update_gold(&mut self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle) -> i32 {
         // argumenti su isti kao za update pojedinacnog golda
         let mut zbir: i32 = 0;
         let mut duzina = self.map_gold.len();
         let mut i: usize = 0;
         while i < duzina {
-            let sudaren = self.map_gold[i].update(world, player_handle);
+            let sudaren = self.map_gold[i].update(world, player_handle, self.map_vel);
             match sudaren { //vraca 0 ako se igrac nije sudario sa zlatom,i neku vrednost ako jeste
                 0 => (),
                 vrednost => {
@@ -331,7 +349,7 @@ impl Map {
     pub fn update_guards(&mut self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle) -> bool {
         let mut res: bool = false;
         for i in 0..self.map_guards.len() {
-            res = res || self.map_guards[i].update(world, player_handle);
+            res = res || self.map_guards[i].update(world, player_handle, self.map_vel);
         }
         res
     }

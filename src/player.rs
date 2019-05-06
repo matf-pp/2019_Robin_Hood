@@ -32,7 +32,7 @@ pub struct Player {
 impl Player {
     pub fn new(ctx: &mut Context, handle: CollisionObjectHandle) -> Self {
         Player {
-            pos: mint::Point2 {x: 64.0, y: 64.0},
+            pos: mint::Point2 {x: 200.0, y: 200.0},
             direction: Vector2::new(0.0, 0.0),
             collision_ver: Direction::Null,
             collision_hor: Direction::Null,
@@ -72,7 +72,7 @@ impl Player {
         }
     }
 
-    pub fn update(&mut self, ctx: &mut Context, world: &mut CollisionWorld<f32, ()>, map_handle: CollisionObjectHandle, corners: &mut Vec<mint::Point2<f32>>) {
+    pub fn update(&mut self, ctx: &mut Context, world: &mut CollisionWorld<f32, ()>, map_handle: CollisionObjectHandle, corners: &mut Vec<mint::Point2<f32>>) -> Vector2<f32> {
         /* self.walking je korisno za animaciju
          * npr. if self.walking {
          *          curr_animation = walk_animation;
@@ -242,10 +242,15 @@ impl Player {
                 }
 
             }
-            self.pos = self.pos_from_move();
+            let new_pos = self.pos_from_move();
+            if new_pos.x > 440.0 || new_pos.x < 200.0 || new_pos.y > 280.0 || new_pos.y < 200.0 {
+                return self.direction
+            } else {
+                self.pos = new_pos;
+            }
             world.set_position(self.col_handle, self.shape_pos(None));
-
         }
+        Vector2::new(0.0, 0.0)
     }
 
     pub fn draw_visibility(&self, ctx: &mut Context) -> GameResult<()> {

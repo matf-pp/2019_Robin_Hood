@@ -76,8 +76,16 @@ impl Guard {
 
         mint::Point2 { x: self.pos.x + norm_dir.x * self.spd, y: self.pos.y + norm_dir.y * self.spd }
     }
-    pub fn update(&mut self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle) -> bool {
+    pub fn update(&mut self, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle, map_vel: Vector2<f32>) -> bool {
         let mut caught_player: bool = false;
+        self.pos.x += map_vel.x;
+        self.pos.y += map_vel.y;
+        for i in 0..self.patrol_points.len() {
+            self.patrol_points[i].x += map_vel.x;
+            self.patrol_points[i].y += map_vel.y;
+        }
+        self.next_point.x += map_vel.x;
+        self.next_point.y += map_vel.y;
         if (self.pos.x.abs() - self.next_point.x.abs()).abs() > (self.spd + 0.2) &&
             (self.pos.y.abs() - self.next_point.y.abs()).abs() > (self.spd + 0.2) {
             if self.final_direction.relative_eq(&self.direction, 0.00006, 0.0006) == false {
