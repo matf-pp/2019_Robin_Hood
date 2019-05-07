@@ -26,7 +26,8 @@ pub struct Player {
     visibility: Vec<mint::Point2<f32>>,
     pub score: i32,
     coin_sound: audio::Source,
-    pub caught: bool
+    pub caught: bool,
+    pub escaped: bool,
 }
 
 impl Player {
@@ -49,6 +50,7 @@ impl Player {
             score: 0,
             coin_sound: audio::Source::new(ctx, "/sounds/coins.wav").unwrap(),
             caught: false,
+            escaped: false,
         }
     }
 

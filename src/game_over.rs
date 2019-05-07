@@ -15,8 +15,12 @@ pub struct GameOver {
 }
 
 impl GameOver {
-    pub fn new(ctx: &mut Context, score: i32) -> GameResult<Self> {
-        let mut game_over_text = graphics::Text::new(format!("Game Over"));
+    pub fn new(ctx: &mut Context, score: i32, won: bool) -> GameResult<Self> {
+        let game_over_str = match won {
+            true => format!("You Won"),
+            false => format!("Game Over"),
+        };
+        let mut game_over_text = graphics::Text::new(game_over_str);
         let mut high_score_text = graphics::Text::new(format!("Gold collected: {}", score));
         let font_celtknot = graphics::Font::new(ctx, "/fonts/Celtknot.ttf").unwrap();
         game_over_text.set_font(font_celtknot, graphics::Scale::uniform(40.0));

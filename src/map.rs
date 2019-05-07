@@ -52,6 +52,36 @@ impl Tile {
     }
 }
 
+pub struct Door {
+    pos: mint::Point2<f32>,
+    image: graphics::Image,
+    handle: CollisionObjectHandle,
+}
+impl Door {
+    pub fn new (ctx: &mut Context, door_pos: mint::Point2<f32>, col_handle: CollisionObjectHandle) -> Self {
+        // handle ce nam kasnije pomoci da odredimo da li je igrac dodirnuo vrata
+        Door {
+            pos: door_pos,
+            image: graphics::Image::new(ctx, "/images/castle_door.png").unwrap(),
+            handle: col_handle,
+        }
+    }
+    pub fn update(&mut self, ctx: &mut Context, world: &mut CollisionWorld<f32, ()>, player_handle: CollisionObjectHandle, map_vel: Vector2<f32>) -> bool {
+        self.pos.x += map_vel.x;
+        self.pos.y += map_vel.y;
+        world.set_position(self.handle, Isometry2::new(Vector2::new(self.pos.x, self.pos.y), 0.0));
+        match world.contact_pair(self.handle, player_handle, true) {
+            // contact_pair vraca uredjenu cetvorku koja opisuje da li se desio sudar
+            Some(_) if input::keyboard::is_key_pressed(ctx, event::KeyCode::E) => true,
+            _ => false,
+        }
+    }
+    pub fn draw (&self, ctx: &mut Context) -> GameResult<()> {
+        graphics::draw(ctx, &self.image, graphics::DrawParam::new().dest(self.pos))?;
+        Ok(())
+    }
+}
+
 pub struct Gold {
     pos: mint::Point2<f32>,
     image: graphics::Image,
@@ -100,7 +130,7 @@ impl Gold {
 pub struct Map {
     map_size: mint::Point2<f32>,
     map_start: mint::Point2<f32>,
-    map_vel: Vector2<f32>,
+    pub map_vel: Vector2<f32>,
     map_spd: f32,
     map_tile_size: mint::Point2<f32>,
     map_corners: Vec<mint::Point2<f32>>,
@@ -109,6 +139,7 @@ pub struct Map {
     pub map_handle: CollisionObjectHandle,
     map_guards: Vec<Guard>,
     map_gold: Vec<Gold>,
+    pub map_door: Door,
 }
 
 impl Map {
@@ -125,11 +156,13 @@ impl Map {
             map_file.read_to_string(&mut map_string)?;
             let mut map_lines = map_string.lines();
 
-            // U prvoj liniji treba da bude 2 broja -
-            // map_width map_heigth
+            // U prvoj liniji treba da bude 4 broja -
+            // map_width map_heigth door_x door_y
             let first_line: Vec<&str> = map_lines.next().unwrap().split(' ').collect();
             let map_width: f32 = first_line[0].parse().unwrap();
             let map_heigth: f32 = first_line[1].parse().unwrap();
+            let door_x: f32 = first_line[2].parse().unwrap();
+            let door_y: f32 = first_line[3].parse().unwrap();
 
             let mut matrix: Vec<Vec<Tile>> = Vec::with_capacity(map_heigth as usize);
 
@@ -297,6 +330,8 @@ impl Map {
 
             }
 
+            let door = Door::new(ctx, mint::Point2 { x: startpos.x + door_x*tile_size.x, y: startpos.y + door_y*tile_size.y }, world_mut.add(Isometry2::new(Vector2::new(startpos.x, startpos.y), 0.0), shape_full.clone(), col_groups, query, ()).handle());
+
             Ok(Map {
                 map_size: mint::Point2 { x: map_width, y: map_heigth }, // ovo je broj polja na mapi
                 map_start: startpos,
@@ -309,6 +344,7 @@ impl Map {
                 map_handle: world_mut.add(Isometry2::new(Vector2::new(startpos.x, startpos.y), 0.0), ShapeHandle::new(Compound::new(compound_shape_vec)), col_groups, query, ()).handle(),
                 map_guards: guards_vec,
                 map_gold: gold_vec,
+                map_door: door,
             })
         }
 

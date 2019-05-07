@@ -80,12 +80,15 @@ impl event::EventHandler for GameState {
                 match &mut self.end {
                     None => {
                         if self.player.caught {
-                            self.end = Some(GameOver::new(ctx, self.player.score).unwrap());
+                            self.end = Some(GameOver::new(ctx, self.player.score, false).unwrap());
+                        } else if self.player.escaped {
+                            self.end = Some(GameOver::new(ctx, self.player.score, true).unwrap());
                         }
                         let map_move = self.player.update(ctx, &mut self.world, self.castle_map.map_handle, &mut self.castle_map.get_corners());
                         self.castle_map.update(&mut self.world, map_move);
                         self.world.update();
                         self.player.caught = self.castle_map.update_guards(&mut self.world, self.player.col_handle);
+                        self.player.escaped = self.castle_map.map_door.update(ctx, &mut self.world, self.player.col_handle, self.castle_map.map_vel);
                         self.player.increase(self.castle_map.update_gold(&mut self.world, self.player.col_handle))?;
                     },
                     Some(g) => {
@@ -106,6 +109,7 @@ impl event::EventHandler for GameState {
             match &self.end {
                 None => {
                     self.castle_map.draw(ctx, 1, false)?; // crta prvi sloj mape (podovi, zidovi iza igraca)
+                    self.castle_map.map_door.draw(ctx)?; // crta vrata
                     self.castle_map.draw_gold(ctx)?; // prodje kroz ceo vektor i nacrta svaki element
                     self.player.draw(ctx, false)?;
                     self.castle_map.draw_guards(ctx)?; //
