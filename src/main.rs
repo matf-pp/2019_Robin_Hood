@@ -92,7 +92,7 @@ impl event::EventHandler for GameState {
                         self.player.increase(self.castle_map.update_gold(&mut self.world, self.player.col_handle))?;
                     },
                     Some(g) => {
-                        g.update();
+                        g.update(ctx);
                     }
                 }
             } else {
@@ -112,7 +112,7 @@ impl event::EventHandler for GameState {
                     self.castle_map.map_door.draw(ctx)?; // crta vrata
                     self.castle_map.draw_gold(ctx)?; // prodje kroz ceo vektor i nacrta svaki element
                     self.player.draw(ctx, false)?;
-                    self.castle_map.draw_guards(ctx)?; //
+                    self.castle_map.draw_guards(ctx)?;
                     self.castle_map.draw(ctx, 2, false)?; // crta drugi sloj mape (donji zidovi)
                     self.castle_map.draw_guard_vision(ctx)?; // vidno polje strazara
                     self.player.draw_score(ctx)?;
@@ -173,12 +173,12 @@ impl event::EventHandler for GameState {
     }
 }
 
-fn main() -> GameResult { //
-    let (ctx, events_loop) = &mut ContextBuilder::new("robin_hood", "lkh01")
-        .window_setup(conf::WindowSetup::default().title("Robin Hood"))
-        .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
-        .build()?;
+fn main() -> GameResult {
+        let (ctx, events_loop) = &mut ContextBuilder::new("robin_hood", "lkh01")
+           .window_setup(conf::WindowSetup::default().title("Robin Hood"))
+           .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
+           .build()?;
 
-    let state = &mut GameState::new(ctx)?;
-    event::run(ctx, events_loop, state)
+        let state = &mut GameState::new(ctx)?;
+        event::run(ctx, events_loop, state)
 }
