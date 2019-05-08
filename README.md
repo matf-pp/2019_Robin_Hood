@@ -26,7 +26,8 @@ Prva komanda prevodi program i smešta ga u direktorijum `target/release/`, dok 
 ## Pokretanje 
 
 ```
-./target/release/robin_hood
+tar -xvf release.tar
+./release/Robin_Hood
 ```
 
 ## Autori
