@@ -56,7 +56,7 @@ impl GameState {
 
 
         Ok(GameState {
-            castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:100.0, y:100.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
+            castle_map: map::Map::load(ctx, "/levels/level1.txt", "/images/castle_spritesheet.png", mint::Point2 { x:100.0, y:164.0 }, mint::Point2 { x:32.0, y:32.0 }, &mut world_mut).unwrap(),
             player: Player::new(ctx, world_mut.add(Isometry2::new(Vector2::new(64.0, 74.0), 0.0), shape.clone(), groups, query, ()).handle()),
             world: world_mut,
             last_update: Instant::now(),

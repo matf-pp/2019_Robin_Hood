@@ -33,7 +33,7 @@ pub struct Player {
 impl Player {
     pub fn new(ctx: &mut Context, handle: CollisionObjectHandle) -> Self {
         Player {
-            pos: mint::Point2 {x: 200.0, y: 200.0},
+            pos: mint::Point2 {x: 350.0, y: 200.0},
             direction: Vector2::new(0.0, 0.0),
             collision_ver: Direction::Null,
             collision_hor: Direction::Null,
