@@ -66,6 +66,19 @@ impl GameState {
             end: None,
         })
     }
+
+    pub fn reset(&mut self, ctx: &mut Context) -> GameResult<()> {
+        let new_state = GameState::new(ctx)?;
+        self.castle_map = new_state.castle_map;
+        self.player = new_state.player;
+        self.world = new_state.world;
+        //self.last_update = new_state.last_update;
+        //self.song = new_state.song;
+        self.menu = new_state.menu;
+        self.in_menu = new_state.in_menu;
+        self.end = new_state.end;
+        Ok(())
+    }
 }
 
 impl event::EventHandler for GameState {
@@ -92,7 +105,13 @@ impl event::EventHandler for GameState {
                         self.player.increase(self.castle_map.update_gold(&mut self.world, self.player.col_handle))?;
                     },
                     Some(g) => {
-                        g.update(ctx);
+                        match g.update(ctx) {
+                            true=> (),
+                            false => {
+                                self.reset(ctx)?;
+                                ()
+                            }
+                        }
                     }
                 }
             } else {

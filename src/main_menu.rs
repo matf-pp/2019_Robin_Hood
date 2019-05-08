@@ -60,8 +60,8 @@ impl MainMenu {
                 self.stone_pos.y -= 5.0;
             }
             let mouse_pos = input::mouse::position(ctx);
-            if mouse_pos.x >= self.text2_pos.x && mouse_pos.x < self.text2_pos.x + 80.0 &&
-                mouse_pos.y >= self.text2_pos.y && mouse_pos.y < self.text2_pos.y + 40.0 {
+            if mouse_pos.x >= self.text2_pos.x && mouse_pos.x < self.text2_pos.x + (self.text2.dimensions(ctx).0 as f32) &&
+                mouse_pos.y >= self.text2_pos.y && mouse_pos.y < self.text2_pos.y + (self.text2.dimensions(ctx).1 as f32) {
                 // mis je preko play teksta
                 for fragment in self.text2.fragments_mut() {
                     fragment.color = Some((208, 198, 29, 255).into());
