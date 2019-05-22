@@ -5,18 +5,22 @@ pub struct MainMenu {
     text1_pos: mint::Point2<f32>,
     text2_pos: mint::Point2<f32>,
     text3_pos: mint::Point2<f32>,
+    text4_pos: mint::Point2<f32>,
     stone_pos: mint::Point2<f32>,
     text1: graphics::Text,
     text2: graphics::Text,
     text3: graphics::Text,
+    text4: graphics::Text,
     stone: graphics::Image,
     final_text1_pos: mint::Point2<f32>,
     final_text2_pos: mint::Point2<f32>,
     final_text3_pos: mint::Point2<f32>,
+    final_text4_pos: mint::Point2<f32>,
     final_stone_pos: mint::Point2<f32>,
     orig_text1_pos: mint::Point2<f32>,
     orig_text2_pos: mint::Point2<f32>,
     orig_text3_pos: mint::Point2<f32>,
+    orig_text4_pos: mint::Point2<f32>,
     orig_stone_pos: mint::Point2<f32>,
     stone_sound: audio::Source,
     play: bool,
@@ -28,10 +32,15 @@ impl MainMenu {
         let mut title_text = graphics::Text::new("Robin Hood");
         let mut play_text = graphics::Text::new("Play");
         let mut quit_text = graphics::Text::new("Quit");
+        let mut help_text = graphics::Text::new("Controls: Arrow keys to move,\n\n  E to exit through the door");
         let font_celtknot = graphics::Font::new(ctx, "/fonts/Celtknot.ttf").unwrap();
         title_text.set_font(font_celtknot, graphics::Scale::uniform(60.0));
         play_text.set_font(font_celtknot, graphics::Scale::uniform(40.0));
         quit_text.set_font(font_celtknot, graphics::Scale::uniform(40.0));
+        help_text.set_font(font_celtknot, graphics::Scale::uniform(26.0));
+        for fragment in help_text.fragments_mut() {
+            fragment.color = Some((208, 198, 29, 255).into());
+        }
         let mut stone_sound = audio::Source::new(ctx, "/sounds/stone_short.mp3").unwrap();
 
         stone_sound.play_detached()?;
@@ -40,18 +49,22 @@ impl MainMenu {
             text1_pos: mint::Point2 { x: 150.0, y: 542.0 },
             text2_pos: mint::Point2 { x: 260.0, y: 642.0 },
             text3_pos: mint::Point2 { x: 260.0, y: 702.0 },
+            text4_pos: mint::Point2 { x: 135.0, y: 762.0 },
             stone_pos: mint::Point2 { x: 40.0, y: 430.0 },
             text1: title_text,
             text2: play_text,
             text3: quit_text,
+            text4: help_text,
             stone: graphics::Image::new(ctx, "/images/user_interface.png").unwrap(),
             final_text1_pos: mint::Point2 { x: 150.0, y: 152.0 },
             final_text2_pos: mint::Point2 { x: 260.0, y: 252.0 },
             final_text3_pos: mint::Point2 { x: 260.0, y: 312.0 },
+            final_text4_pos: mint::Point2 { x: 135.0, y: 372.0 },
             final_stone_pos: mint::Point2 { x: 40.0, y: 40.0 },
             orig_text1_pos: mint::Point2 { x: 150.0, y: 542.0 },
             orig_text2_pos: mint::Point2 { x: 260.0, y: 642.0 },
             orig_text3_pos: mint::Point2 { x: 260.0, y: 702.0 },
+            orig_text4_pos: mint::Point2 { x: 135.0, y: 762.0 },
             orig_stone_pos: mint::Point2 { x: 40.0, y: 430.0 },
             stone_sound: stone_sound,
             play: false,
@@ -68,6 +81,9 @@ impl MainMenu {
             }
             if self.text3_pos != self.final_text3_pos {
                 self.text3_pos.y -= 5.0;
+            }
+            if self.text4_pos != self.final_text4_pos {
+                self.text4_pos.y -= 5.0;
             }
             if self.stone_pos != self.final_stone_pos {
                 self.stone_pos.y -= 5.0;
@@ -112,14 +128,17 @@ impl MainMenu {
             if self.text3_pos != self.orig_text3_pos {
                 self.text3_pos.y += 5.0;
             }
+            if self.text4_pos != self.orig_text4_pos {
+                self.text4_pos.y += 5.0;
+            }
             if self.stone_pos != self.orig_stone_pos {
                 self.stone_pos.y += 5.0;
             }
             if self.stone_pos == self.orig_stone_pos {
-                return false 
+                return false
             }
         }
-        true 
+        true
     }
 
     pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
@@ -127,6 +146,7 @@ impl MainMenu {
         graphics::draw(ctx, &self.text1, graphics::DrawParam::new().dest(self.text1_pos))?;
         graphics::draw(ctx, &self.text2, graphics::DrawParam::new().dest(self.text2_pos))?;
         graphics::draw(ctx, &self.text3, graphics::DrawParam::new().dest(self.text3_pos))?;
+        graphics::draw(ctx, &self.text4, graphics::DrawParam::new().dest(self.text4_pos))?;
         Ok(())
     }
 }

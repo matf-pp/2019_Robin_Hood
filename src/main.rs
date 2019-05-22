@@ -193,7 +193,7 @@ impl event::EventHandler for GameState {
 }
 
 fn main() -> GameResult {
-        let (ctx, events_loop) = &mut ContextBuilder::new("robin_hood", "lkh01")
+        let (ctx, events_loop) = &mut ContextBuilder::new("robin_hood", "lkh01, marrijana")
            .window_setup(conf::WindowSetup::default().title("Robin Hood"))
            .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0, SCREEN_SIZE.1))
            .build()?;
